@@ -1,0 +1,3 @@
+summary_type,overlap_count,union_count,pairs
+top_pair_overlap,10,10,"age x marital_status, age x relationship, education_num x occupation, gender x marital_status, gender x occupation, gender x relationship, hours_per_week x occupation, marital_status x relationship, occupation x relationship, occupation x workclass"
+candidate_overlap,5,5,"age x education_num, age x hours_per_week, capital_gain x education_num, capital_gain x hours_per_week, education_num x hours_per_week"

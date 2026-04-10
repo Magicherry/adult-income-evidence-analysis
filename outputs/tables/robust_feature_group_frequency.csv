@@ -1,0 +1,7 @@
+feature_group,seed_count
+occupation,3
+marital_status,3
+relationship,3
+workclass,3
+race,2
+education_num,1

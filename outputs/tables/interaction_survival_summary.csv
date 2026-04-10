@@ -1,0 +1,6 @@
+interaction_name,feature_a,feature_b,nonzero_share,sign_consistency,mean_abs_coefficient,evidence_code
+interaction__age__x__hours_per_week,age,hours_per_week,1.0,1.0,0.316457535916436,unstable
+interaction__capital_gain_log1p__x__hours_per_week,capital_gain,hours_per_week,1.0,1.0,0.12634850052108587,unstable
+interaction__education_num__x__capital_gain_log1p,education_num,capital_gain,1.0,1.0,0.126670392780001,unstable
+interaction__education_num__x__hours_per_week,education_num,hours_per_week,0.7777777777777778,0.5714285714285714,0.16449890311304452,unstable
+interaction__age__x__education_num,age,education_num,0.7777777777777778,0.5714285714285714,0.1455048961930469,unstable

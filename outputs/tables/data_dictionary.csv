@@ -1,0 +1,17 @@
+column,dtype,non_null_count,missing_count,nunique,example_values
+row_id,int64,48842,0,48842,0 | 1 | 2 | 3 | 4
+age,int64,48842,0,74,25 | 38 | 28 | 44 | 18
+workclass,str,48842,0,9,Private | Private | Local-gov | Private | ?
+fnlwgt,int64,48842,0,28523,226802 | 89814 | 336951 | 160323 | 103497
+education,str,48842,0,16,11th | HS-grad | Assoc-acdm | Some-college | Some-college
+education_num,int64,48842,0,16,7 | 9 | 12 | 10 | 10
+marital_status,str,48842,0,7,Never-married | Married-civ-spouse | Married-civ-spouse | Married-civ-spouse | Never-married
+occupation,str,48842,0,15,Machine-op-inspct | Farming-fishing | Protective-serv | Machine-op-inspct | ?
+relationship,str,48842,0,6,Own-child | Husband | Husband | Husband | Own-child
+race,str,48842,0,5,Black | White | White | Black | White
+gender,str,48842,0,2,Male | Male | Male | Male | Female
+capital_gain,int64,48842,0,123,0 | 0 | 0 | 7688 | 0
+capital_loss,int64,48842,0,99,0 | 0 | 0 | 0 | 0
+hours_per_week,int64,48842,0,96,40 | 50 | 40 | 40 | 30
+native_country,str,48842,0,42,United-States | United-States | United-States | United-States | United-States
+income,str,48842,0,2,<=50K | <=50K | >50K | >50K | <=50K

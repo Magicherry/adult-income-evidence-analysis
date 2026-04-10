@@ -1,0 +1,6 @@
+feature_a,feature_b,pairwise_mi,pair_rank,dependency_rank,combined_label_mi,selection_source,candidate_rank,feature_a_label_mi,feature_b_label_mi,model_feature_a,model_feature_b
+age,hours_per_week,0.05016305668927378,13,1,0.09717125546718194,mi_top_pair,1,0.059384316724625186,0.037786938742556765,age,hours_per_week
+age,education_num,0.030514663440544668,20,2,0.11330330032514668,mi_top_pair,2,0.059384316724625186,0.0539189836005215,age,education_num
+education_num,hours_per_week,0.019346199402145284,25,3,0.09170592234307826,mi_top_pair,3,0.0539189836005215,0.037786938742556765,education_num,hours_per_week
+education_num,capital_gain,0.013300823839089322,27,4,0.10326425996793215,mi_top_pair,4,0.0539189836005215,0.04934527636741065,education_num,capital_gain_log1p
+capital_gain,hours_per_week,0.006730855572207449,39,6,0.08713221510996741,domain_plausibility_reserve,5,0.04934527636741065,0.037786938742556765,capital_gain_log1p,hours_per_week

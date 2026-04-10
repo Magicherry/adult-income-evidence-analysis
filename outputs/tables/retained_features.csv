@@ -1,0 +1,17 @@
+feature,feature_type,used_in_analysis,used_in_modeling,notes
+age,numeric,True,True,raw numeric feature
+education_num,numeric,True,True,raw numeric feature
+capital_gain,numeric,True,True,raw numeric feature
+capital_loss,numeric,True,True,raw numeric feature
+hours_per_week,numeric,True,True,raw numeric feature
+workclass,categorical,True,True,raw categorical feature
+marital_status,categorical,True,True,raw categorical feature
+occupation,categorical,True,True,raw categorical feature
+relationship,categorical,True,True,raw categorical feature
+race,categorical,True,True,raw categorical feature
+gender,categorical,True,True,raw categorical feature
+native_country,categorical,True,True,native_country is collapsed for main modeling
+capital_gain_log1p,derived_numeric,False,True,log1p transform for modeling
+capital_loss_log1p,derived_numeric,False,True,log1p transform for modeling
+native_country_grouped,derived_categorical,True,True,United-States vs Non-United-States vs Missing
+income_gt_50k,label,True,True,binary target derived from income

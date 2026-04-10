@@ -1,0 +1,2 @@
+linear_model,nonlinear_model,positive_delta_seeds,negative_delta_seeds,zero_delta_seeds,directionally_consistent
+svm_linear,svm_poly,3,0,0,True

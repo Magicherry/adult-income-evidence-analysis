@@ -1,0 +1,6 @@
+metric,value
+main_split_seed,42
+main_split_manifest,data/processed/splits/split_seed_42.json
+native_country_us_share,0.8974243478973015
+native_country_raw_mi,0.005682300012680304
+native_country_grouped_mi,0.0005502371123178446

@@ -1,0 +1,3 @@
+model,accuracy,precision,recall,f1,roc_auc,C,interaction_count,selected_interactions
+baseline_main_effects,0.8476814412938888,0.7234490010515248,0.5885372112917023,0.6490566037735849,0.8974694937940025,1.0,0,
+interaction_augmented,,,,,,1.0,0,

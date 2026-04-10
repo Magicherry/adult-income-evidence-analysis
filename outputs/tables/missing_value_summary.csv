@@ -1,0 +1,17 @@
+column,missing_count,missing_share
+row_id,0,0.0
+age,0,0.0
+workclass,0,0.0
+fnlwgt,0,0.0
+education,0,0.0
+education_num,0,0.0
+marital_status,0,0.0
+occupation,0,0.0
+relationship,0,0.0
+race,0,0.0
+gender,0,0.0
+capital_gain,0,0.0
+capital_loss,0,0.0
+hours_per_week,0,0.0
+native_country,0,0.0
+income,0,0.0

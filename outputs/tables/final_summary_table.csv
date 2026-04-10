@@ -1,0 +1,5 @@
+artifact,value,metric,metric_value
+top_continuous_feature,education_num,single_feature_roc_auc,0.7155728394170354
+top_label_mi_feature,relationship,feature_label_mi,0.11582762636895605
+top_logistic_feature_group,marital_status,nonzero_share,1.0
+best_svm_family,poly,roc_auc,0.9050510778431603

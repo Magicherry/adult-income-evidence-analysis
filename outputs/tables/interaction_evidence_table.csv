@@ -1,0 +1,6 @@
+feature_a,feature_b,selection_source,pairwise_mi,delta_cv_roc_auc,delta_test_roc_auc,evidence_code
+age,hours_per_week,mi_top_pair,0.06572005036734621,0.00017370433026120402,0.00021017426477010215,unstable
+age,education_num,mi_top_pair,0.05170158695058482,-2.6337251178176757e-05,-1.2432600627110268e-05,unstable
+education_num,hours_per_week,mi_top_pair,0.026485073418656115,-4.250040403130928e-05,-2.6189042986457522e-06,unstable
+education_num,capital_gain,mi_top_pair,0.015961818915539945,-2.5391522198714434e-05,5.709786954732898e-05,unstable
+capital_gain,hours_per_week,domain_plausibility_reserve,0.007698499318198807,4.183043855998658e-05,-6.63072033451062e-05,unstable
