@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
