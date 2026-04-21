@@ -1,0 +1,90 @@
+\begin{thebibliography}{13}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Andrew and Gao(2007)}]{andrew2007scalable}
+Galen Andrew and Jianfeng Gao. 2007.
+\newblock \href {https://doi.org/10.1145/1273496.1273501} {Scalable training of
+  {L1}-regularized log-linear models}.
+\newblock In \emph{Proceedings of the 24th International Conference on Machine
+  Learning}, pages 33--40.
+
+\bibitem[{Boser et~al.(1992)Boser, Guyon, and Vapnik}]{boser1992training}
+Bernhard~E. Boser, Isabelle~M. Guyon, and Vladimir~N. Vapnik. 1992.
+\newblock \href {https://doi.org/10.1145/130385.130401} {A training algorithm
+  for optimal margin classifiers}.
+\newblock In \emph{Proceedings of the Fifth Annual Workshop on Computational
+  Learning Theory}, pages 144--152. ACM Press.
+
+\bibitem[{Cohen(1988)}]{cohen1988statistical}
+Jacob Cohen. 1988.
+\newblock \emph{Statistical Power Analysis for the Behavioral Sciences}, 2nd
+  edition.
+\newblock Lawrence Erlbaum Associates, Hillsdale, NJ.
+
+\bibitem[{Cortes and Vapnik(1995)}]{cortes1995support}
+Corinna Cortes and Vladimir Vapnik. 1995.
+\newblock \href {https://doi.org/10.1007/BF00994018} {Support-vector networks}.
+\newblock \emph{Machine Learning}, 20(3):273--297.
+
+\bibitem[{Cover and Thomas(2006)}]{cover2006elements}
+Thomas~M. Cover and Joy~A. Thomas. 2006.
+\newblock \emph{Elements of Information Theory}, 2nd edition.
+\newblock Wiley-Interscience, Hoboken, NJ.
+
+\bibitem[{Dua and Graff(2019)}]{uci_adult}
+Dheeru Dua and Casey Graff. 2019.
+\newblock \href {https://archive.ics.uci.edu/ml/datasets/adult} {{UCI} machine
+  learning repository: Adult data set}.
+
+\bibitem[{Fawcett(2006)}]{fawcett2006introduction}
+Tom Fawcett. 2006.
+\newblock \href {https://doi.org/10.1016/j.patrec.2005.10.010} {An introduction
+  to {ROC} analysis}.
+\newblock \emph{Pattern Recognition Letters}, 27(8):861--874.
+
+\bibitem[{Hand(2009)}]{hand2009measuring}
+David~J. Hand. 2009.
+\newblock \href {https://doi.org/10.1007/s10994-009-5119-5} {Measuring
+  classifier performance: A coherent alternative to the area under the {ROC}
+  curve}.
+\newblock \emph{Machine Learning}, 77(1):103--123.
+
+\bibitem[{Hastie et~al.(2009)Hastie, Tibshirani, and
+  Friedman}]{hastie2009elements}
+Trevor Hastie, Robert Tibshirani, and Jerome Friedman. 2009.
+\newblock \href {https://doi.org/10.1007/978-0-387-84858-7} {\emph{The Elements
+  of Statistical Learning: Data Mining, Inference, and Prediction}}, 2nd
+  edition.
+\newblock Springer, New York.
+
+\bibitem[{Kohavi(1996)}]{kohavi1996scaling}
+Ron Kohavi. 1996.
+\newblock Scaling up the accuracy of naive-{Bayes} classifiers: A decision-tree
+  hybrid.
+\newblock In \emph{Proceedings of the Second International Conference on
+  Knowledge Discovery and Data Mining}, pages 202--207. AAAI Press.
+
+\bibitem[{Pedregosa et~al.(2011)Pedregosa, Varoquaux, Gramfort, Michel,
+  Thirion, Grisel, Blondel, Prettenhofer, Weiss, Dubourg, Vanderplas, Passos,
+  Cournapeau, Brucher, Perrot, and Duchesnay}]{pedregosa2011scikit}
+Fabian Pedregosa, Ga{\"e}l Varoquaux, Alexandre Gramfort, Vincent Michel,
+  Bertrand Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron
+  Weiss, Vincent Dubourg, Jake Vanderplas, Alexandre Passos, David Cournapeau,
+  Matthieu Brucher, Matthieu Perrot, and {\'E}douard Duchesnay. 2011.
+\newblock Scikit-learn: Machine learning in {Python}.
+\newblock \emph{Journal of Machine Learning Research}, 12:2825--2830.
+
+\bibitem[{Shannon(1948)}]{shannon1948mathematical}
+Claude~E. Shannon. 1948.
+\newblock \href {https://doi.org/10.1002/j.1538-7305.1948.tb01338.x} {A
+  mathematical theory of communication}.
+\newblock \emph{The Bell System Technical Journal}, 27(3):379--423.
+
+\bibitem[{Tibshirani(1996)}]{tibshirani1996regression}
+Robert Tibshirani. 1996.
+\newblock \href {https://doi.org/10.1111/j.2517-6161.1996.tb02080.x}
+  {Regression shrinkage and selection via the lasso}.
+\newblock \emph{Journal of the Royal Statistical Society: Series B
+  (Methodological)}, 58(1):267--288.
+
+\end{thebibliography}

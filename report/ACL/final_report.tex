@@ -1,0 +1,965 @@
+\documentclass[11pt]{article}
+
+% Use [final] for the camera-ready (non-anonymous) version.
+% Change to [review] for anonymous peer-review submission.
+\usepackage[final]{acl}
+
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+
+% For proper rendering of accented characters in bib files
+\usepackage[T1]{fontenc}
+
+% UTF-8 input encoding
+\usepackage[utf8]{inputenc}
+
+% Improves typography and spacing
+\usepackage{microtype}
+
+% Better typewriter font
+\usepackage{inconsolata}
+
+% Graphics inclusion
+\usepackage{graphicx}
+
+% Professional-quality tables
+\usepackage{booktabs}
+
+% Mathematics
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% Multi-row/column table cells
+\usepackage{multirow}
+
+% Allow figure*/table* to be placed at the bottom of pages,
+% preventing all wide floats from piling up at the document end.
+\usepackage{stfloats}
+
+% Allow slightly wider title box if needed
+%\setlength\titlebox{6cm}
+
+% ---------------------------------------------------------------
+\title{CatNet: A Triangulated Evidence Framework for Income Classification}
+
+\author{Wenxi Dai \\
+  Rutgers University \\
+  \texttt{wd232@scarletmail.rutgers.edu} \\\And
+  Yuting Zhou \\
+  Rutgers University \\
+  \texttt{yz1617@scarletmail.rutgers.edu}}
+% ---------------------------------------------------------------
+
+\begin{document}
+\maketitle
+
+% ===============================================================
+\begin{abstract}
+% ===============================================================
+
+We present \textbf{CatNet} (Complementary Analysis and Triangulated
+Network), a reproducible six-stage framework for structured income
+classification analysis on the UCI Adult Census dataset
+\citep{uci_adult}.  Rather than optimising a single performance
+metric, CatNet addresses four complementary research questions
+concerning distributional shape, feature dependency, sparse
+predictive signal, and decision boundary geometry through six
+coordinated modules: \textbf{WhiskerFlow} (preprocessing),
+\textbf{KittenGauss} (class-conditional distribution analysis),
+\textbf{TailMI} (mutual information feature analysis),
+\textbf{ClawReg} (L1-regularised logistic regression),
+\textbf{WhiskerInteract} (interaction validation), and
+\textbf{PawSVM} (kernel boundary analysis).  MeowRank scoring
+identifies \texttt{education\_num}, \texttt{age}, and
+\texttt{hours\_per\_week} as the strongest continuous discriminators.
+TailMI reveals strong structural dependencies---notably between
+\texttt{marital\_status} and \texttt{relationship}---that do not
+translate into useful interaction terms under WhiskerInteract
+validation.  ClawReg achieves a held-out ROC-AUC of 0.897 with a
+compact, stable feature core.  Among the three PawSVM
+variants---\textbf{TabbySVM} (linear), \textbf{PurrPoly}
+(degree-2 polynomial), and \textbf{FurRBF} (radial basis
+function)---PurrPoly achieves the best ROC-AUC of 0.905, while
+FurRBF does not outperform TabbySVM, indicating modest low-order
+nonlinearity rather than broad kernel complexity.  PurrRobust
+stability checks confirm all main conclusions across random seeds,
+regularisation levels, and MI discretisation schemes.
+
+\end{abstract}
+
+% ===============================================================
+\section{Introduction}
+% ===============================================================
+
+Predicting whether an individual's annual income exceeds
+\$50{,}000 from census data has been a canonical binary
+classification benchmark since its introduction by
+\citet{kohavi1996scaling}.  The UCI Adult dataset \citep{uci_adult},
+derived from the 1994 United States Census, combines continuous
+demographic variables with categorical socioeconomic features and
+exhibits moderate class imbalance, making it a rich testbed for
+understanding the statistical structure of real-world classification
+problems.  Most prior work on this dataset focuses on prediction
+performance---reporting accuracy or F1 improvements from model-level
+changes---without asking \emph{why} any particular model performs as
+well as it does.
+
+This paper takes a structural perspective.  We treat the income
+prediction task as a data analysis problem, not merely a prediction
+benchmark, and organise the investigation around four complementary
+research questions: (1) What are the class-conditional distributional
+shapes of the continuous features, and which are well-described by a
+Gaussian summary? (2) How do features depend on one another at the
+level of mutual information, and do those dependencies suggest useful
+interaction terms? (3) Which features carry robust predictive signal
+under L1-enforced sparsity, and are the stable features consistent
+across the regularisation path? (4) Is the income decision boundary
+predominantly linear, or does it exhibit meaningful low-order
+nonlinear structure?
+
+To answer these questions, we introduce \textbf{CatNet}, a
+Complementary Analysis and Triangulated Network framework consisting
+of six coordinated analytical modules.  The central design principle
+of CatNet is triangulation: each module provides a distinct
+analytical lens, and the final interpretation is a synthesis of
+converging evidence rather than a conclusion from any single model.
+This design guards against the common risk of over-interpreting
+single-method findings---a feature can appear informative under one
+marginal view and yet become redundant in a sparse multivariate
+model, and a strong feature--feature dependency can reflect structural
+overlap rather than a productive interaction term.
+
+The main contributions of this paper are as follows.  We describe a
+reproducible six-stage analysis pipeline, CatNet, that systematically
+addresses structural questions about tabular classification data.
+We demonstrate through TailMI that the strongest feature dependencies
+in this dataset---including the \texttt{marital\_status}--\texttt{relationship}
+pair---do not translate into useful interaction terms under explicit
+validation.  We show through ClawReg that the strongest predictive
+signal is concentrated in a compact, stable set of feature groups.
+We establish through PawSVM that a degree-2 PurrPoly boundary
+captures modest but consistent nonlinear structure, while FurRBF
+does not improve over TabbySVM, pointing to limited low-order
+nonlinearity.  Finally, PurrRobust stability checks confirm that all
+main conclusions hold across random seeds, regularisation choices,
+and MI discretisation schemes.
+
+The remainder of the paper is organised as follows.
+Section~\ref{sec:related} reviews related work.
+Section~\ref{sec:catnet} describes the CatNet framework.
+Section~\ref{sec:setup} covers experimental setup.
+Section~\ref{sec:results} presents results for each module.
+Section~\ref{sec:discussion} synthesises the findings, and
+Section~\ref{sec:conclusion} concludes.
+
+% ===============================================================
+\section{Related Work}
+\label{sec:related}
+% ===============================================================
+
+The UCI Adult dataset was introduced as a machine learning benchmark
+by \citet{kohavi1996scaling} and has since become one of the most
+frequently cited datasets for evaluating classifier performance,
+fairness interventions, and interpretability methods.  Standard
+preprocessing choices---removing the \texttt{fnlwgt} sample weight
+and the string-valued \texttt{education} in favour of the numeric
+\texttt{education\_num}---have become conventional across the
+literature.  Despite the dataset's ubiquity, most published studies
+treat it as a black-box benchmark rather than as a subject of
+structural investigation.
+
+Mutual information provides a principled, non-parametric measure of
+statistical dependence \citep{shannon1948mathematical,cover2006elements}.
+Unlike linear correlation, it captures arbitrary functional
+dependencies, making it well-suited for identifying nonlinear
+feature--label relationships and characterising redundancy among
+feature pairs.  Filter-based feature selection methods based on MI
+have been studied extensively \citep{hastie2009elements}; here,
+TailMI uses MI primarily as a diagnostic and dependency
+characterisation tool rather than as a selection filter.
+
+L1-regularised logistic regression, popularised as the LASSO by
+\citet{tibshirani1996regression}, enforces exact coefficient sparsity
+and has become a standard tool for identifying compact sets of
+informative features.  \citet{andrew2007scalable} demonstrate
+efficient training algorithms for L1-regularised log-linear models.
+Our ClawReg module studies the full regularisation path rather than a
+single operating point, allowing us to assess which feature groups
+consistently survive as sparsity increases and thereby distinguish
+robust signals from ones that disappear under mild regularisation.
+
+Support vector machines \citep{cortes1995support}, extended to
+nonlinear boundaries through the kernel trick \citep{boser1992training},
+provide a principled framework for comparing boundary shapes.
+The choice among linear, polynomial, and radial basis function kernels
+directly encodes assumptions about the complexity of the decision
+surface.  ROC-AUC is used as the primary evaluation metric throughout
+this paper because it is insensitive to the class imbalance present in
+this dataset and provides a consistent ranking across probability
+thresholds \citep{fawcett2006introduction,hand2009measuring}.  All
+implementations use scikit-learn \citep{pedregosa2011scikit}.
+
+% ===============================================================
+\section{The CatNet Framework}
+\label{sec:catnet}
+% ===============================================================
+
+CatNet integrates six modules in a fixed sequential order.  Each
+module produces structured outputs---figures, tables, and summary
+statistics---that feed into the next stage.  All hyperparameter
+tuning is performed exclusively on the training split.  The following
+subsections describe each module in detail.
+
+% ---------------------------------------------------------------
+\subsection{WhiskerFlow: Data Preprocessing}
+\label{sec:whiskerflow}
+% ---------------------------------------------------------------
+
+WhiskerFlow transforms the raw UCI Adult records into a form suitable
+for downstream analysis.  The input dataset contains 48{,}842 rows
+with a mix of continuous and categorical predictors.  Two features are
+removed prior to analysis: \texttt{education}, because it duplicates
+the numeric \texttt{education\_num}; and \texttt{fnlwgt}, following
+the project specification.  The retained predictors are five
+continuous variables (\texttt{age}, \texttt{education\_num},
+\texttt{capital\_gain}, \texttt{capital\_loss},
+\texttt{hours\_per\_week}) and seven categorical variables
+(\texttt{workclass}, \texttt{marital\_status}, \texttt{occupation},
+\texttt{relationship}, \texttt{race}, \texttt{gender},
+\texttt{native\_country}).
+
+A key preprocessing step is the log-plus-one transform applied to
+\texttt{capital\_gain} and \texttt{capital\_loss}:
+\begin{equation}
+  \tilde{x} = \log(1 + x), \quad x \geq 0.
+  \label{eq:log1p}
+\end{equation}
+This transform compresses the long right tails of these zero-inflated
+variables without discarding the zero mass, producing derived features
+\texttt{capital\_gain\_log1p} and \texttt{capital\_loss\_log1p} that
+are used in ClawReg.  The \texttt{native\_country} variable is
+collapsed into a binary grouped feature
+\texttt{native\_country\_grouped}, since approximately $89.7\%$ of
+rows fall under the United States category and this variable carries
+very low feature--label MI ($0.0006$; see Section~\ref{sec:tailmi_results}).
+
+The main split is a stratified 80/20 train--test partition with
+random seed 42, yielding 39{,}073 training and 9{,}769 test rows.
+Stratification preserves the class ratio in both splits.  Robustness
+reruns use seeds 7, 42, and 99 on the full dataset with the same
+protocol.
+
+% ---------------------------------------------------------------
+\subsection{KittenGauss: Class-Conditional Distribution Analysis}
+\label{sec:kittengauss}
+% ---------------------------------------------------------------
+
+KittenGauss fits univariate Gaussian distributions to each continuous
+feature conditional on the income class label.  The class-conditional
+model is $p(x \mid y = c) = \mathcal{N}(\mu_c, \sigma_c^2)$, where
+parameters $\mu_c$ and $\sigma_c$ are estimated from training-split
+data by maximum likelihood.
+
+Feature discrimination is quantified using two complementary
+measures.  The \textbf{MeowRank} score is the single-feature held-out
+ROC-AUC, computed by using the feature value alone as a classifier
+score.  Cohen's $d$ \citep{cohen1988statistical} measures the
+standardised mean difference between classes:
+\begin{align}
+  d &= \frac{\bar{x}_{>50K} - \bar{x}_{\leq 50K}}{s_{\text{pooled}}},
+  \label{eq:cohend} \\
+  s_{\text{pooled}} &= \sqrt{\frac{(n_1-1)s_1^2 + (n_2-1)s_2^2}{n_1+n_2-2}}.
+  \notag
+\end{align}
+KittenGauss is used as a descriptive lens rather than a generative
+claim: it is valuable for ranking features and identifying
+distributional anomalies, but it is not assumed that the data are
+actually Gaussian.
+
+% ---------------------------------------------------------------
+\subsection{TailMI: Feature Dependency Analysis}
+\label{sec:tailmi}
+% ---------------------------------------------------------------
+
+TailMI quantifies pairwise statistical dependence using empirical
+mutual information estimates.  For any pair of discrete or discretised
+variables $X$ and $Y$, the empirical estimate is:
+\begin{equation}
+  \hat{I}(X;Y)
+  = \sum_{x \in \mathcal{X}} \sum_{y \in \mathcal{Y}}
+    \hat{p}(x,y) \log_2 \frac{\hat{p}(x,y)}{\hat{p}(x)\,\hat{p}(y)},
+  \label{eq:mi}
+\end{equation}
+where joint and marginal distributions are estimated from training-split
+frequency counts.  Continuous variables are discretised into
+equal-width bins before computing MI.  Two binning schemes---a coarser
+and a finer one---provide a sensitivity check on the stability of the
+dependency ranking.
+
+TailMI produces two outputs: a feature--label MI ranking, identifying
+which predictors carry the strongest marginal association with the
+income label; and a feature--feature MI matrix, identifying which
+pairs of predictors share the most redundant information.  Both
+outputs feed into the WhiskerInteract candidate shortlist.
+
+% ---------------------------------------------------------------
+\subsection{ClawReg: Sparse L1-Regularised Logistic Regression}
+\label{sec:clawreg}
+% ---------------------------------------------------------------
+
+ClawReg fits an L1-regularised logistic regression model (the
+\textbf{ClawLoss} objective) across a grid of regularisation
+strengths.  ClawLoss is defined as:
+\begin{align}
+  \mathcal{L}_{\text{Claw}}(\boldsymbol{w}; C)
+    &= -\sum_{i=1}^{n}\Bigl[
+        y_i \log \sigma\!\bigl(\boldsymbol{w}^T \mathbf{x}_i\bigr)
+      \notag \\
+    &\quad
+        + (1-y_i)\log\!\bigl(1 - \sigma(\boldsymbol{w}^T \mathbf{x}_i)\bigr)
+      \Bigr] \notag \\
+    &\quad + \frac{1}{C}\|\boldsymbol{w}\|_1,
+  \label{eq:clawloss}
+\end{align}
+where $\sigma(z) = (1+e^{-z})^{-1}$ is the sigmoid function and
+$C > 0$ controls inverse regularisation strength.  The regularisation
+grid spans nine logarithmically spaced values from $C = 0.001$ to $C = 10.0$.  The best $C$ is selected by 5-fold
+cross-validated ROC-AUC on the training split.  Feature group
+stability is assessed by the fraction of grid points at which each
+group has at least one non-zero coefficient.
+
+% ---------------------------------------------------------------
+\subsection{WhiskerInteract: Targeted Interaction Validation}
+\label{sec:whiskerinteract}
+% ---------------------------------------------------------------
+
+WhiskerInteract tests a pre-specified set of numeric interaction
+candidates for meaningful improvement over the main-effects ClawReg
+model.  Candidates are shortlisted from the TailMI feature--feature
+matrix and domain plausibility, restricted to numeric pairs to avoid
+the combinatorial explosion of categorical interactions.  For each
+candidate, a feature equal to the product of the two standardised
+predictors is appended to the feature matrix and a new ClawLoss model
+is fitted.  An interaction is considered potentially useful only if it
+yields a cross-validated ROC-AUC improvement exceeding a threshold of
+0.001 over the main-effects baseline.
+
+% ---------------------------------------------------------------
+\subsection{PawSVM: Kernel Boundary Shape Analysis}
+\label{sec:pawsvm}
+% ---------------------------------------------------------------
+
+PawSVM compares three SVM variants to assess the shape of the income
+decision boundary.  All variants solve the soft-margin SVM primal:
+\begin{align}
+  \min_{\boldsymbol{w},\, b,\, \boldsymbol{\xi}} &\;
+    \tfrac{1}{2}\|\boldsymbol{w}\|^2 + C\sum_{i=1}^{n}\xi_i
+    \label{eq:svm} \\
+  \text{s.t.} &\;
+    y_i\bigl(\boldsymbol{w}^T\phi(\mathbf{x}_i) + b\bigr) \geq 1 - \xi_i,\;\;
+    \xi_i \geq 0, \notag
+\end{align}
+with different kernel functions $k(\mathbf{x}_i, \mathbf{x}_j)$.
+\textbf{TabbySVM} uses a linear kernel.
+\textbf{PurrPoly} uses a degree-$d$ polynomial kernel:
+\begin{equation}
+  k_{\text{PurrPoly}}(\mathbf{x}_i, \mathbf{x}_j)
+  = \bigl(\gamma\, \mathbf{x}_i^T \mathbf{x}_j + r\bigr)^d.
+  \label{eq:polykern}
+\end{equation}
+\textbf{FurRBF} uses a radial basis function kernel:
+\begin{equation}
+  k_{\text{FurRBF}}(\mathbf{x}_i, \mathbf{x}_j)
+  = \exp\!\bigl(-\gamma \|\mathbf{x}_i - \mathbf{x}_j\|^2\bigr).
+  \label{eq:rbfkern}
+\end{equation}
+Each variant is independently tuned by grid search on the training
+split using 5-fold cross-validated ROC-AUC.  Kernel selection is
+made after tuning, based on held-out test ROC-AUC.
+
+% ===============================================================
+\section{Experimental Setup}
+\label{sec:setup}
+% ===============================================================
+
+All experiments use the WhiskerFlow 80/20 stratified train--test
+split with seed 42 as the primary evaluation setting.  Hyperparameter
+tuning is performed exclusively on the training split using 5-fold
+stratified cross-validation.  The test split is reserved for final
+evaluation and robustness reruns, and is never used for model
+selection.
+
+Categorical features are one-hot encoded before being fed into
+ClawReg and PawSVM.  Continuous features are standardised to zero
+mean and unit variance on the training split statistics.  The
+TabbySVM grid uses $C \in \{0.1,\, 0.3,\, 1.0,\, 3.0,\, 10.0\}$.
+PurrPoly uses $d \in \{2, 3\}$, $C \in \{0.1,\, 1.0,\, 10.0\}$, and
+$r \in \{0.0,\, 1.0\}$.  FurRBF uses $C \in \{1.0,\, 3.0,\, 10.0\}$
+and $\gamma \in \{0.01,\, 0.05,\, 0.1,\, 0.5\}$.  Evaluation uses
+accuracy, macro-averaged precision and recall, positive-class F1, and
+ROC-AUC, with ROC-AUC as the primary metric throughout.  All
+implementations use scikit-learn 1.8.0 \citep{pedregosa2011scikit}
+with Python 3.12.
+
+% ===============================================================
+\section{Results}
+\label{sec:results}
+% ===============================================================
+
+% ---------------------------------------------------------------
+\subsection{Focused Exploratory Analysis}
+\label{sec:eda}
+% ---------------------------------------------------------------
+
+The training split contains 39{,}073 rows, of which 29{,}724 (76.1\%)
+belong to the \texttt{<=50K} class and 9{,}349 (23.9\%) belong to
+the \texttt{>50K} class.  This imbalance, illustrated in
+Figure~\ref{fig:classbalance}, motivates the use of ROC-AUC and F1
+as primary metrics.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.88\columnwidth]{figures/class_balance}
+  \caption{Class distribution in the training split.  The
+    \texttt{>50K} class constitutes 23.9\% of training
+    instances, motivating ROC-AUC as the primary evaluation metric.}
+  \label{fig:classbalance}
+\end{figure}
+
+Three notable distributional patterns emerge from the continuous
+feature flags: \texttt{capital\_gain} is extremely sparse (91.8\%
+zeros), \texttt{capital\_loss} is even sparser (95.2\% zeros), and
+\texttt{hours\_per\_week} has a dominant repeated value (46.5\% of
+rows at a single value).  These patterns motivate the WhiskerFlow
+log1p transforms and inform the interpretation of KittenGauss results.
+Figure~\ref{fig:continuous} shows the class-conditional distribution
+of all five continuous features, with the visible separation in
+\texttt{education\_num} and \texttt{age} contrasting with the
+zero-dominated distributions of the capital variables.
+
+\begin{figure*}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{figures/continuous_by_income_grid}
+  \caption{Continuous feature distributions by income class.
+    \texttt{education\_num}, \texttt{age}, and
+    \texttt{hours\_per\_week} show clear class separation.
+    \texttt{capital\_gain} and \texttt{capital\_loss} are dominated
+    by the zero mass and long right tails, making the Gaussian
+    summary a poor description of their shape.}
+  \label{fig:continuous}
+\end{figure*}
+
+Preliminary inspection of categorical variables reveals strong
+differences in positive-income rates across groups.
+Figure~\ref{fig:catfreq} summarises the most striking contrasts:
+\texttt{Married-civ-spouse} has a 44.8\% positive rate versus 4.4\%
+for \texttt{Never-married}; \texttt{Exec-managerial} has 48.2\%
+versus 4.0\% for \texttt{Other-service}; and \texttt{Male} has 30.4\%
+versus 10.9\% for \texttt{Female}.  These large group differences
+already suggest that household structure and occupation-related
+variables will dominate the multivariate models.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/categorical_frequency_grid}
+  \caption{Selected categorical feature distributions with
+    positive-income rates.  Household structure (\texttt{marital\_status},
+    \texttt{relationship}) and occupation-related variables already
+    show large income-class differences before formal modelling.}
+  \label{fig:catfreq}
+\end{figure}
+
+% ---------------------------------------------------------------
+\subsection{KittenGauss Distribution Analysis}
+\label{sec:kittengauss_results}
+% ---------------------------------------------------------------
+
+Table~\ref{tab:gaussian} summarises the class-conditional Gaussian
+statistics and MeowRank scores for the five continuous features.
+\texttt{education\_num} is clearly the strongest continuous
+discriminator, with a MeowRank ROC-AUC of 0.716 and a Cohen's $d$
+of 0.825.  \texttt{age} and \texttt{hours\_per\_week} show moderate
+but meaningful separation, while the capital variables have identical
+class medians of zero, reflecting their extreme zero inflation.
+
+\begin{table*}[!htb]
+  \centering
+  \small
+  \begin{tabular}{lrrcc}
+    \toprule
+    \textbf{Feature} &
+    \textbf{Mean} (${\leq}$50K) &
+    \textbf{Mean} ($>$50K) &
+    \textbf{Cohen's~$d$} &
+    \textbf{MeowRank AUC} \\
+    \midrule
+    \texttt{education\_num}   & 9.60  & 11.60 & 0.825 & 0.716 \\
+    \texttt{age}              & 36.92 & 44.35 & 0.556 & 0.682 \\
+    \texttt{hours\_per\_week} & 38.89 & 45.43 & 0.541 & 0.671 \\
+    \texttt{capital\_gain}    & 147.7 & 3950  & 0.532 & 0.588 \\
+    \texttt{capital\_loss}    & 55.3  & 200.0 & 0.358 & 0.535 \\
+    \bottomrule
+  \end{tabular}
+  \caption{KittenGauss statistics for the five continuous features.
+    MeowRank AUC is the single-feature held-out ROC-AUC.  Despite the
+    large mean differences for the capital variables, their
+    MeowRank scores are low because the Gaussian summary is a
+    poor fit for zero-inflated distributions.}
+  \label{tab:gaussian}
+\end{table*}
+
+Figure~\ref{fig:gaussian} shows the empirical histograms overlaid
+with the fitted class-conditional Gaussian curves.  The approximation
+is reasonable for \texttt{education\_num}, \texttt{age}, and
+\texttt{hours\_per\_week}, but breaks down for \texttt{capital\_gain}
+and \texttt{capital\_loss}, whose distributions consist of a large
+zero mass and a sparse right tail that no Gaussian can accommodate.
+Figure~\ref{fig:sepranking} ranks all five features by MeowRank
+score, confirming that \texttt{education\_num} is the dominant
+marginal separator.
+
+\begin{figure*}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{figures/gaussian_fit_overlays}
+  \caption{KittenGauss fitted overlays.  Empirical histograms with
+    class-conditional Gaussian curves for each continuous feature.
+    The Gaussian fit is adequate for \texttt{education\_num},
+    \texttt{age}, and \texttt{hours\_per\_week}, but fails
+    completely for the zero-inflated capital variables.}
+  \label{fig:gaussian}
+\end{figure*}
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.92\columnwidth]{figures/continuous_separation_ranking}
+  \caption{MeowRank: continuous feature ranking by single-feature
+    held-out ROC-AUC.  \texttt{education\_num} is clearly the
+    strongest marginal continuous discriminator.}
+  \label{fig:sepranking}
+\end{figure}
+
+% ---------------------------------------------------------------
+\subsection{TailMI Feature Dependencies}
+\label{sec:tailmi_results}
+% ---------------------------------------------------------------
+
+Table~\ref{tab:tailmi} reports the top feature--label and
+feature--feature MI values.  The leading feature--label MI values
+belong to \texttt{relationship} (0.116) and \texttt{marital\_status}
+(0.111), substantially above the numeric features (\texttt{age}:
+0.064, \texttt{education\_num}: 0.062).  The strongest pairwise
+dependencies are concentrated among household-structure and
+work-context variables: \texttt{marital\_status}--\texttt{relationship}
+($\hat{I} = 0.725$), \texttt{workclass}--\texttt{occupation} (0.329),
+and \texttt{relationship}--\texttt{gender} (0.270).
+
+\begin{table}[!ht]
+  \centering
+  \small
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Feature} & \textbf{Feature--label MI} \\
+    \midrule
+    \texttt{relationship}    & 0.116 \\
+    \texttt{marital\_status} & 0.111 \\
+    \texttt{age}             & 0.064 \\
+    \texttt{occupation}      & 0.063 \\
+    \texttt{education\_num}  & 0.062 \\
+    \texttt{capital\_gain}   & 0.054 \\
+    \bottomrule
+  \end{tabular}
+  \quad
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Feature pair} & \textbf{Pairwise MI} \\
+    \midrule
+    \texttt{marital\_status} $\times$ \texttt{relationship} & 0.725 \\
+    \texttt{workclass} $\times$ \texttt{occupation}         & 0.329 \\
+    \texttt{relationship} $\times$ \texttt{gender}          & 0.270 \\
+    \texttt{age} $\times$ \texttt{marital\_status}          & 0.233 \\
+    \texttt{education\_num} $\times$ \texttt{occupation}    & 0.213 \\
+    \bottomrule
+  \end{tabular}
+  \caption{TailMI results.  \textit{Left}: top feature--label MI
+    values.  \textit{Right}: top five feature--feature MI pairs.
+    The high pairwise MI reflects structural overlap among
+    sociodemographic variables rather than indicating
+    useful interaction candidates.}
+  \label{tab:tailmi}
+\end{table}
+
+The full TailMI pairwise MI matrix is displayed in
+Figure~\ref{fig:miheatmap}.  Figures~\ref{fig:milabel} and~\ref{fig:mipairs} show
+the feature--label MI ranking and the top feature--feature pairs as
+bar charts.  The discretisation sensitivity check confirms complete
+overlap in the top-10 MI pairs (10/10) and in the candidate
+interaction shortlist (5/5) across the two binning schemes, indicating
+that the TailMI dependency picture is stable with respect to
+discretisation choice.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/mi_heatmap}
+  \caption{TailMI pairwise mutual information heatmap.  The strongest
+    dependencies are concentrated among household-structure and
+    work-context variables, not in the numeric interaction shortlist.
+    Darker cells indicate higher MI values.}
+  \label{fig:miheatmap}
+\end{figure}
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/feature_label_mi_ranking}
+  \caption{TailMI feature--label MI ranking.  \texttt{relationship}
+    and \texttt{marital\_status} lead, with numeric features
+    further down the ranking.}
+  \label{fig:milabel}
+\end{figure}
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/top_mi_pairs}
+  \caption{Top feature--feature MI pairs.  The dominant pairs
+    reflect sociodemographic overlap rather than productive
+    interaction candidates.}
+  \label{fig:mipairs}
+\end{figure}
+
+% ---------------------------------------------------------------
+\subsection{ClawReg Sparse Model}
+\label{sec:clawreg_results}
+% ---------------------------------------------------------------
+
+The best ClawReg model selects $C = 1.0$ by cross-validation and
+achieves the held-out performance shown in Table~\ref{tab:clawreg}.
+The ROC-AUC of 0.897 is the primary result.
+
+\begin{table}[!ht]
+  \centering
+  \footnotesize
+  \begin{tabular}{cccccc}
+    \toprule
+    \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.}
+      & \textbf{F1} & \textbf{AUC} & \textbf{Best $C$} \\
+    \midrule
+    0.848 & 0.723 & 0.589 & 0.649 & 0.897 & 1.0 \\
+    \bottomrule
+  \end{tabular}
+  \caption{ClawReg held-out performance on the test split (seed 42).
+    Acc.\,=\,accuracy, Prec.\,=\,precision, Rec.\,=\,recall,
+    AUC\,=\,ROC-AUC.}
+  \label{tab:clawreg}
+\end{table}
+
+The cross-validated ROC-AUC rises from 0.887 at $C = 0.001$ to a
+plateau near 0.900 by $C = 0.1$.  The plateau is very flat: the range
+from $C = 0.1$ to $C = 10.0$ spans only 0.0003 in mean CV ROC-AUC
+(0.8998, 0.9001, 0.9001, 0.9001 at $C = 0.1, 0.316, 1.0, 10.0$
+respectively).  The logistic model's performance is therefore
+largely insensitive to the exact regularisation level once moderate
+sparsity is allowed.
+
+Table~\ref{tab:stablefeatures} reports the feature groups that remain
+non-zero across the full ClawLoss regularisation grid.  Six groups
+are perfectly stable (non-zero at all 9 grid points):
+\texttt{marital\_status} dominates with a mean absolute coefficient of
+3.359, followed by \texttt{education\_num} (0.741),
+\texttt{capital\_gain\_log1p} (0.475), \texttt{hours\_per\_week}
+(0.328), \texttt{age} (0.317), and \texttt{capital\_loss\_log1p}
+(0.220).
+
+\begin{table}[!ht]
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Feature group}     & \textbf{Non-zero share} & \textbf{Mean $|\text{coef}|$} \\
+    \midrule
+    \texttt{marital\_status}       & 1.000 & 3.359 \\
+    \texttt{education\_num}        & 1.000 & 0.741 \\
+    \texttt{capital\_gain\_log1p}  & 1.000 & 0.475 \\
+    \texttt{hours\_per\_week}      & 1.000 & 0.328 \\
+    \texttt{age}                   & 1.000 & 0.317 \\
+    \texttt{capital\_loss\_log1p}  & 1.000 & 0.220 \\
+    \texttt{occupation}            & 0.889 & ---   \\
+    \texttt{relationship}          & 0.778 & ---   \\
+    \texttt{workclass}             & 0.778 & ---   \\
+    \texttt{gender}                & 0.778 & ---   \\
+    \bottomrule
+  \end{tabular}
+  \caption{ClawReg feature group stability across the full
+    regularisation grid.  Non-zero share is the fraction of the
+    9 grid points at which the group has at least one non-zero
+    coefficient.  Groups with non-zero share $< 1$ do not
+    appear at all grid points.}
+  \label{tab:stablefeatures}
+\end{table}
+
+Figure~\ref{fig:coeffpaths} shows the ClawLoss coefficient paths
+across the regularisation grid.  The contrast between the core
+stable groups---especially \texttt{marital\_status}, whose coefficient
+remains large throughout---and the peripheral groups that enter and
+leave the active set as $C$ increases illustrates the concentration
+of predictive signal.
+
+\begin{figure*}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{figures/logistic_coefficient_paths}
+  \caption{ClawReg coefficient paths across the L1 regularisation
+    grid (ClawLoss).  A compact set of feature groups remains active
+    across the full range of regularisation strengths.  The scale of
+    the \texttt{marital\_status} coefficient reflects both its
+    predictive strength and the one-hot encoding magnitudes of
+    individual categories.}
+  \label{fig:coeffpaths}
+\end{figure*}
+
+% ---------------------------------------------------------------
+\subsection{WhiskerInteract Interaction Validation}
+\label{sec:whiskerinteract_results}
+% ---------------------------------------------------------------
+
+WhiskerInteract tests five numeric interaction candidates drawn from
+the TailMI shortlist.  Table~\ref{tab:interactions} summarises the
+results.  Every tested interaction produces changes in cross-validated
+ROC-AUC smaller than $10^{-3}$ in magnitude.  The largest positive
+change in CV ROC-AUC is only $+0.000174$ for
+\texttt{age}~$\times$~\texttt{hours\_per\_week}, and no interaction
+consistently improves both the cross-validation and test metrics
+simultaneously.
+
+\begin{table*}[!htb]
+  \centering
+  \small
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Interaction} &
+    \textbf{Pairwise MI} &
+    $\boldsymbol{\Delta}$ \textbf{CV AUC} &
+    $\boldsymbol{\Delta}$ \textbf{Test AUC} \\
+    \midrule
+    \texttt{age} $\times$ \texttt{hours\_per\_week}            & 0.066 & $+0.000174$ & $+0.000210$ \\
+    \texttt{age} $\times$ \texttt{education\_num}              & 0.052 & $-0.000026$ & $-0.000012$ \\
+    \texttt{education\_num} $\times$ \texttt{hours\_per\_week} & 0.027 & $-0.000043$ & $-0.000003$ \\
+    \texttt{education\_num} $\times$ \texttt{capital\_gain}    & 0.016 & $-0.000025$ & $+0.000057$ \\
+    \texttt{capital\_gain} $\times$ \texttt{hours\_per\_week}  & 0.008 & $+0.000042$ & $-0.000066$ \\
+    \bottomrule
+  \end{tabular}
+  \caption{WhiskerInteract results.  All ROC-AUC deltas fall below
+    the $0.001$ improvement threshold.  No interaction-augmented
+    model was retained.}
+  \label{tab:interactions}
+\end{table*}
+
+Because no interaction clears the 0.001 threshold and the test-set
+delta signs are inconsistent across candidates, no interaction-augmented
+final model is retained.  Figure~\ref{fig:interactions} summarises
+the delta values visually.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.9\columnwidth]{figures/interaction_delta_cv_auc}
+  \caption{WhiskerInteract: incremental change in CV ROC-AUC from
+    adding each interaction term.  All effects are well below the
+    $0.001$ threshold, and no consistent pattern emerges.}
+  \label{fig:interactions}
+\end{figure}
+
+% ---------------------------------------------------------------
+\subsection{PawSVM Boundary Analysis}
+\label{sec:pawsvm_results}
+% ---------------------------------------------------------------
+
+Table~\ref{tab:svm} compares the three PawSVM variants.  TabbySVM
+achieves a test ROC-AUC of 0.897 at $C = 0.1$.  PurrPoly with
+degree 2 achieves 0.905, an improvement of approximately 0.008.
+FurRBF achieves 0.896, fractionally below TabbySVM.
+
+\begin{table*}[!htb]
+  \centering
+  \small
+  \begin{tabular}{llccc}
+    \toprule
+    \textbf{Model} & \textbf{Best hyperparameters} &
+      \textbf{CV AUC} & \textbf{Test AUC} & \textbf{Test F1} \\
+    \midrule
+    TabbySVM (linear) & $C = 0.1$                          & 0.893 & 0.897 & 0.644 \\
+    PurrPoly (poly-2) & $d=2,\ C=1.0,\ r=1.0$             & 0.898 & 0.905 & 0.670 \\
+    FurRBF (RBF)      & $C=3.0,\ \gamma=0.05$             & 0.892 & 0.896 & 0.670 \\
+    \bottomrule
+  \end{tabular}
+  \caption{PawSVM comparison across TabbySVM, PurrPoly, and FurRBF.
+    PurrPoly achieves the highest held-out ROC-AUC.  FurRBF does not
+    improve over TabbySVM, ruling out the need for a highly flexible
+    local boundary.}
+  \label{tab:svm}
+\end{table*}
+
+The degree-3 PurrPoly variant is clearly inferior in cross-validation
+(CV ROC-AUC $\approx 0.883$) compared to degree-2 (0.898), indicating
+that useful nonlinearity is low-order.  The FurRBF result is
+consistent with the WhiskerInteract finding: the problem does not
+require flexible local boundaries, and the PurrPoly improvement is
+more plausibly due to capturing low-order polynomial effects across
+the encoded feature space.  Figure~\ref{fig:svm} summarises the
+held-out ROC-AUC comparison.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.9\columnwidth]{figures/svm_kernel_comparison}
+  \caption{PawSVM held-out ROC-AUC comparison.  PurrPoly (degree-2
+    polynomial) consistently outperforms TabbySVM (linear) and
+    FurRBF (RBF), confirming modest low-order nonlinearity.}
+  \label{fig:svm}
+\end{figure}
+
+% ---------------------------------------------------------------
+\subsection{PurrRobust Stability Checks}
+\label{sec:purrobust}
+% ---------------------------------------------------------------
+
+Table~\ref{tab:robustness} reports the held-out test ROC-AUC for the
+three main models across random seeds 7, 42, and 99.  The range
+across seeds is narrow for all models: ClawReg spans 0.897--0.901,
+TabbySVM spans 0.897--0.901, and PurrPoly spans 0.905--0.906.
+PurrPoly remains above TabbySVM at every seed, with margins of
+$+0.0063$, $+0.0078$, and $+0.0045$ at seeds 7, 42, and 99
+respectively.
+
+\begin{table}[!ht]
+  \centering
+  \small
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Model} & \textbf{Seed 7} & \textbf{Seed 42} & \textbf{Seed 99} & \textbf{Range} \\
+    \midrule
+    ClawReg   & 0.901 & 0.897 & 0.901 & 0.004 \\
+    TabbySVM  & 0.900 & 0.897 & 0.901 & 0.004 \\
+    PurrPoly  & 0.906 & 0.905 & 0.906 & 0.001 \\
+    \bottomrule
+  \end{tabular}
+  \caption{PurrRobust seed stability.  Held-out test ROC-AUC across
+    three stratified random splits.  PurrPoly consistently leads at
+    every seed.  All models show narrow variation, confirming that
+    the main conclusions do not depend on a specific random split.}
+  \label{tab:robustness}
+\end{table}
+
+The TailMI discretisation sensitivity check confirms stability: both
+the top-10 MI pairs (10/10) and the candidate interaction shortlist
+(5/5) overlap completely across the two binning schemes.
+Figure~\ref{fig:robustness} shows the metric ranges across seeds.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.9\columnwidth]{figures/robustness_metric_ranges}
+  \caption{PurrRobust: ROC-AUC metric ranges across seeds 7, 42,
+    and 99.  The ordering of PurrPoly above TabbySVM and ClawReg
+    is consistent across all three splits.}
+  \label{fig:robustness}
+\end{figure}
+
+% ===============================================================
+\section{Analysis and Discussion}
+\label{sec:discussion}
+% ===============================================================
+
+Taken together, the six CatNet modules paint a consistent picture of
+the Adult income dataset.  The clearest signals are held by
+household-structure and education-related variables, a pattern
+independently confirmed by TailMI feature--label rankings, KittenGauss
+MeowRank scores, and the ClawReg feature stability analysis.  This
+cross-method convergence is meaningful: the strong features are
+genuinely informative rather than artefacts of any particular
+modelling assumption.
+
+A more nuanced finding emerges from the comparison between TailMI and
+ClawReg.  \texttt{relationship} has the highest feature--label MI
+(0.116) but is less stable in ClawReg than \texttt{marital\_status},
+which has MI of 0.111.  The most likely explanation is that these
+variables carry heavily overlapping information about household role,
+and once \texttt{marital\_status} enters the model,
+\texttt{relationship} adds limited incremental signal.  This
+redundancy is already visible in the large pairwise MI (0.725).
+The broader lesson is that MI rankings should not be read directly as
+a ranking of predictive utility in a multivariate model: high marginal
+relevance does not imply low redundancy.
+
+The capital variables provide a useful case study in the value of
+transformation and triangulation.  Under the KittenGauss lens,
+\texttt{capital\_gain} and \texttt{capital\_loss} are flagged as
+non-Gaussian and weak, because the Gaussian summary cannot accommodate
+zero-inflated distributions.  After the WhiskerFlow log1p transform,
+however, \texttt{capital\_gain\_log1p} and \texttt{capital\_loss\_log1p}
+both survive the full ClawReg regularisation path.  A finding that
+appears weak under one analytical lens should therefore not be
+dismissed without examining alternative representations.
+
+The PawSVM boundary analysis resolves the fourth research question:
+the income decision boundary is not purely linear, but the
+nonlinearity is modest and low-order.  The degree-2 PurrPoly kernel
+captures a consistent improvement of approximately 0.008 in ROC-AUC
+over TabbySVM across all three seeds, while FurRBF does not improve
+over the linear baseline.  This suggests that the boundary is better
+described by a degree-2 polynomial surface than by a highly flexible
+radial kernel---consistent with the WhiskerInteract finding that
+explicit low-order numeric products provide negligible lift, since
+PurrPoly may be capturing a broader range of such effects across the
+full one-hot encoded feature space rather than the specific five
+products that WhiskerInteract tested.
+
+% ===============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+% ===============================================================
+
+We have introduced CatNet, a six-module triangulated evidence
+framework for structured income classification analysis on the UCI
+Adult dataset.  CatNet integrates WhiskerFlow preprocessing,
+KittenGauss class-conditional distribution analysis, TailMI feature
+dependency analysis, ClawReg sparse logistic regression,
+WhiskerInteract interaction validation, and PawSVM kernel boundary
+comparison into a coherent analytical pipeline that addresses four
+research questions about distributional shape, feature dependencies,
+sparse predictive signal, and decision boundary geometry.
+
+The main findings are that a compact core of features
+(\texttt{marital\_status}, \texttt{education\_num},
+\texttt{capital\_gain\_log1p}, \texttt{hours\_per\_week}, \texttt{age},
+and \texttt{capital\_loss\_log1p}) dominates the ClawReg sparse model;
+that strong TailMI dependencies among household-structure variables
+reflect redundancy rather than useful interactions; that
+log-transformed capital variables carry significant signal despite
+appearing weak under the Gaussian lens; and that the income boundary
+exhibits modest low-order polynomial nonlinearity captured by
+degree-2 PurrPoly but not by FurRBF.  PurrRobust stability checks
+confirm all findings across three random seeds, nine regularisation
+levels, and two MI discretisation schemes.
+
+% ===============================================================
+\section*{Limitations}
+% ===============================================================
+
+KittenGauss provides useful descriptive comparisons but is a poor
+model for zero-inflated variables such as \texttt{capital\_gain};
+findings from this module should be interpreted alongside the ClawReg
+results rather than in isolation.  The WhiskerInteract validation
+covers only five numeric interaction products and does not explore
+categorical or mixed-type interactions, which could in principle yield
+larger improvements.  The PawSVM comparison reveals the existence of
+modest nonlinearity but does not identify which specific polynomial
+terms drive the PurrPoly improvement.  The missing-value handling in
+the original pipeline preserves the literal \texttt{?} string as an
+explicit categorical level rather than imputing or removing affected
+rows, which may affect the categorical frequency summaries.  Finally,
+all conclusions are specific to the UCI Adult dataset and the 1994
+United States census population it represents; they should not be
+generalised to other income prediction settings without independent
+validation.
+
+% Bibliography
+\bibliography{final_report}
+
+\end{document}
