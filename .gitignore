@@ -26,3 +26,16 @@ Thumbs.db
 outputs/logs/*.log
 *.tmp
 *.temp
+
+# LaTeX build artifacts under reports
+report/**/*.aux
+report/**/*.bbl
+report/**/*.bcf
+report/**/*.blg
+report/**/*.fdb_latexmk
+report/**/*.fls
+report/**/*.log
+report/**/*.out
+report/**/*.run.xml
+report/**/*.synctex.gz
+report/**/*.toc
