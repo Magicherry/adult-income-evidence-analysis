@@ -15,6 +15,7 @@ LABEL_MAP = {0: "<=50K", 1: ">50K"}
 
 
 def _cohens_d(class_zero: np.ndarray, class_one: np.ndarray) -> float:
+    # Compute a simple standardized mean gap between the two classes.
     n0 = len(class_zero)
     n1 = len(class_one)
     var0 = np.var(class_zero, ddof=1)
@@ -26,11 +27,13 @@ def _cohens_d(class_zero: np.ndarray, class_one: np.ndarray) -> float:
 
 
 def _single_feature_auc(y_true: pd.Series, feature_values: pd.Series) -> float:
+    # Measure how well one feature separates the label on its own.
     auc = roc_auc_score(y_true, feature_values)
     return float(max(auc, 1.0 - auc))
 
 
 def gaussian_fit_summary(train_df: pd.DataFrame) -> pd.DataFrame:
+    # Compare each numeric feature across income classes with a few summary signals.
     rows = []
     for feature in config.NUMERIC_RAW_FEATURES:
         class_zero = train_df.loc[train_df[config.LABEL_COLUMN] == 0, feature].to_numpy()
@@ -75,6 +78,7 @@ def gaussian_fit_summary(train_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_gaussian_overlays(train_df: pd.DataFrame, output_path) -> None:
+    # Overlay class histograms with fitted Gaussian curves for a quick shape check.
     set_plot_style()
     fig, axes = plt.subplots(3, 2, figsize=config.FIGURE_SIZE_TALL)
     axes = axes.flatten()
@@ -91,6 +95,7 @@ def plot_gaussian_overlays(train_df: pd.DataFrame, output_path) -> None:
             std = values.std(ddof=0)
             ax.hist(values, bins=30, density=True, alpha=0.35, color=palette[label_value], label=LABEL_MAP[label_value])
             if std > 0:
+                # The fitted curve is just a visual reference, not a modeling assumption.
                 ax.plot(x_grid, stats.norm.pdf(x_grid, loc=mean, scale=std), color=palette[label_value], linewidth=2)
         ax.set_title(feature.replace("_", " ").title())
         ax.set_xlabel(feature.replace("_", " ").title())
@@ -102,6 +107,7 @@ def plot_gaussian_overlays(train_df: pd.DataFrame, output_path) -> None:
 
 
 def plot_continuous_separation_ranking(summary_df: pd.DataFrame, output_path) -> None:
+    # Plot the numeric features from weakest to strongest univariate separation.
     set_plot_style()
     plot_df = summary_df.sort_values("single_feature_roc_auc", ascending=True)
     fig, ax = plt.subplots(figsize=(8, 4))

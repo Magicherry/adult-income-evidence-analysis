@@ -27,6 +27,7 @@ warnings.filterwarnings("ignore", message="Inconsistent values: penalty=.*", cat
 
 
 def make_logistic_pipeline(c_value: float, interaction_columns: list[str] | None = None, seed: int = config.MAIN_SPLIT_SEED):
+    # Build the preprocessing-plus-model pipeline used for all logistic runs.
     return Pipeline(
         steps=[
             ("preprocess", build_preprocessor(interaction_columns=interaction_columns)),
@@ -52,6 +53,7 @@ def cross_validate_logistic(
     interaction_columns: list[str] | None = None,
     seed: int = config.MAIN_SPLIT_SEED,
 ) -> pd.DataFrame:
+    # Run the regularization sweep and collect fold-level summary metrics.
     c_grid = c_grid or config.LOGISTIC_C_GRID
     splitter = StratifiedKFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=seed)
     rows = []
@@ -73,6 +75,7 @@ def fit_logistic_and_extract_coefficients(
     interaction_columns: list[str] | None = None,
     seed: int = config.MAIN_SPLIT_SEED,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    # Fit one model per C value and save both raw and grouped coefficient views.
     c_grid = c_grid or config.LOGISTIC_C_GRID
     coefficient_rows = []
     group_rows = []
@@ -117,6 +120,7 @@ def fit_logistic_and_extract_coefficients(
 
 
 def feature_group_stability_table(group_df: pd.DataFrame) -> pd.DataFrame:
+    # Summarize which feature groups stay active across the C grid.
     summary = (
         group_df.groupby("feature_group")
         .agg(
@@ -132,6 +136,7 @@ def feature_group_stability_table(group_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def choose_best_c(cv_summary_df: pd.DataFrame) -> float:
+    # Pick the smallest C among the best cross-validated ROC-AUC rows.
     best_row = cv_summary_df.sort_values(["mean_cv_roc_auc", "C"], ascending=[False, True]).iloc[0]
     return float(best_row["C"])
 
@@ -145,6 +150,7 @@ def evaluate_logistic_model(
     interaction_columns: list[str] | None = None,
     seed: int = config.MAIN_SPLIT_SEED,
 ) -> tuple[dict, Pipeline]:
+    # Fit the selected logistic model and score it on the held-out split.
     pipeline = make_logistic_pipeline(c_value=c_value, interaction_columns=interaction_columns, seed=seed)
     pipeline.fit(X_train, y_train)
     y_score = pipeline.predict_proba(X_test)[:, 1]
@@ -155,6 +161,7 @@ def evaluate_logistic_model(
 
 
 def plot_coefficient_paths(coefficient_df: pd.DataFrame, output_path) -> None:
+    # Plot how the largest coefficients move as regularization changes.
     set_plot_style()
     top_features = (
         coefficient_df.groupby("encoded_feature")["abs_coefficient"].max().sort_values(ascending=False).head(15).index.tolist()

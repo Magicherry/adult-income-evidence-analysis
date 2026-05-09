@@ -10,10 +10,12 @@ from src.utils import load_json, save_json
 
 
 def split_manifest_path(seed: int) -> Path:
+    # Return the path used to cache one train/test split manifest.
     return config.SPLITS_DIR / f"split_seed_{seed}.json"
 
 
 def create_stratified_split(df: pd.DataFrame, seed: int) -> dict:
+    # Create and save a reproducible stratified train/test split.
     train_ids, test_ids = train_test_split(
         df[config.ROW_ID_COLUMN],
         test_size=config.TEST_SIZE,
@@ -33,6 +35,7 @@ def create_stratified_split(df: pd.DataFrame, seed: int) -> dict:
 
 
 def load_or_create_split(df: pd.DataFrame, seed: int) -> dict:
+    # Reuse a cached split when available so reruns stay identical.
     path = split_manifest_path(seed)
     if path.exists():
         return load_json(path)
@@ -40,6 +43,7 @@ def load_or_create_split(df: pd.DataFrame, seed: int) -> dict:
 
 
 def apply_split(df: pd.DataFrame, manifest: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
+    # Slice the full dataframe into train and test partitions from saved row ids.
     train_ids = set(manifest["train_row_ids"])
     test_ids = set(manifest["test_row_ids"])
     train_df = df[df[config.ROW_ID_COLUMN].isin(train_ids)].copy()

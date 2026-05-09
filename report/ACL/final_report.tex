@@ -146,63 +146,16 @@ main conclusions hold across random seeds, regularisation choices,
 and MI discretisation schemes.
 
 The remainder of the paper is organised as follows.
-Section~\ref{sec:related} reviews related work.
-Section~\ref{sec:catnet} describes the CatNet framework.
-Section~\ref{sec:setup} covers experimental setup.
+Section~\ref{sec:sysdesign} describes the system design.
+Section~\ref{sec:datasets} covers the datasets used.
+Section~\ref{sec:methodology} presents the experimental methodology.
 Section~\ref{sec:results} presents results for each module.
-Section~\ref{sec:discussion} synthesises the findings, and
-Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:evaluation} synthesises the findings, and
+Section~\ref{sec:conclusions} concludes.
 
 % ===============================================================
-\section{Related Work}
-\label{sec:related}
-% ===============================================================
-
-The UCI Adult dataset was introduced as a machine learning benchmark
-by \citet{kohavi1996scaling} and has since become one of the most
-frequently cited datasets for evaluating classifier performance,
-fairness interventions, and interpretability methods.  Standard
-preprocessing choices---removing the \texttt{fnlwgt} sample weight
-and the string-valued \texttt{education} in favour of the numeric
-\texttt{education\_num}---have become conventional across the
-literature.  Despite the dataset's ubiquity, most published studies
-treat it as a black-box benchmark rather than as a subject of
-structural investigation.
-
-Mutual information provides a principled, non-parametric measure of
-statistical dependence \citep{shannon1948mathematical,cover2006elements}.
-Unlike linear correlation, it captures arbitrary functional
-dependencies, making it well-suited for identifying nonlinear
-feature--label relationships and characterising redundancy among
-feature pairs.  Filter-based feature selection methods based on MI
-have been studied extensively \citep{hastie2009elements}; here,
-TailMI uses MI primarily as a diagnostic and dependency
-characterisation tool rather than as a selection filter.
-
-L1-regularised logistic regression, popularised as the LASSO by
-\citet{tibshirani1996regression}, enforces exact coefficient sparsity
-and has become a standard tool for identifying compact sets of
-informative features.  \citet{andrew2007scalable} demonstrate
-efficient training algorithms for L1-regularised log-linear models.
-Our ClawReg module studies the full regularisation path rather than a
-single operating point, allowing us to assess which feature groups
-consistently survive as sparsity increases and thereby distinguish
-robust signals from ones that disappear under mild regularisation.
-
-Support vector machines \citep{cortes1995support}, extended to
-nonlinear boundaries through the kernel trick \citep{boser1992training},
-provide a principled framework for comparing boundary shapes.
-The choice among linear, polynomial, and radial basis function kernels
-directly encodes assumptions about the complexity of the decision
-surface.  ROC-AUC is used as the primary evaluation metric throughout
-this paper because it is insensitive to the class imbalance present in
-this dataset and provides a consistent ranking across probability
-thresholds \citep{fawcett2006introduction,hand2009measuring}.  All
-implementations use scikit-learn \citep{pedregosa2011scikit}.
-
-% ===============================================================
-\section{The CatNet Framework}
-\label{sec:catnet}
+\section{System Design}
+\label{sec:sysdesign}
 % ===============================================================
 
 CatNet integrates six modules in a fixed sequential order.  Each
@@ -379,8 +332,55 @@ split using 5-fold cross-validated ROC-AUC.  Kernel selection is
 made after tuning, based on held-out test ROC-AUC.
 
 % ===============================================================
-\section{Experimental Setup}
-\label{sec:setup}
+\section{Datasets Used}
+\label{sec:datasets}
+% ===============================================================
+
+The UCI Adult dataset was introduced as a machine learning benchmark
+by \citet{kohavi1996scaling} and has since become one of the most
+frequently cited datasets for evaluating classifier performance,
+fairness interventions, and interpretability methods.  Standard
+preprocessing choices---removing the \texttt{fnlwgt} sample weight
+and the string-valued \texttt{education} in favour of the numeric
+\texttt{education\_num}---have become conventional across the
+literature.  Despite the dataset's ubiquity, most published studies
+treat it as a black-box benchmark rather than as a subject of
+structural investigation.
+
+Mutual information provides a principled, non-parametric measure of
+statistical dependence \citep{shannon1948mathematical,cover2006elements}.
+Unlike linear correlation, it captures arbitrary functional
+dependencies, making it well-suited for identifying nonlinear
+feature--label relationships and characterising redundancy among
+feature pairs.  Filter-based feature selection methods based on MI
+have been studied extensively \citep{hastie2009elements}; here,
+TailMI uses MI primarily as a diagnostic and dependency
+characterisation tool rather than as a selection filter.
+
+L1-regularised logistic regression, popularised as the LASSO by
+\citet{tibshirani1996regression}, enforces exact coefficient sparsity
+and has become a standard tool for identifying compact sets of
+informative features.  \citet{andrew2007scalable} demonstrate
+efficient training algorithms for L1-regularised log-linear models.
+Our ClawReg module studies the full regularisation path rather than a
+single operating point, allowing us to assess which feature groups
+consistently survive as sparsity increases and thereby distinguish
+robust signals from ones that disappear under mild regularisation.
+
+Support vector machines \citep{cortes1995support}, extended to
+nonlinear boundaries through the kernel trick \citep{boser1992training},
+provide a principled framework for comparing boundary shapes.
+The choice among linear, polynomial, and radial basis function kernels
+directly encodes assumptions about the complexity of the decision
+surface.  ROC-AUC is used as the primary evaluation metric throughout
+this paper because it is insensitive to the class imbalance present in
+this dataset and provides a consistent ranking across probability
+thresholds \citep{fawcett2006introduction,hand2009measuring}.  All
+implementations use scikit-learn \citep{pedregosa2011scikit}.
+
+% ===============================================================
+\section{Methodology}
+\label{sec:methodology}
 % ===============================================================
 
 All experiments use the WhiskerFlow 80/20 stratified train--test
@@ -862,8 +862,8 @@ Figure~\ref{fig:robustness} shows the metric ranges across seeds.
 \end{figure}
 
 % ===============================================================
-\section{Analysis and Discussion}
-\label{sec:discussion}
+\section{Evaluation Metrics Used}
+\label{sec:evaluation}
 % ===============================================================
 
 Taken together, the six CatNet modules paint a consistent picture of
@@ -911,8 +911,8 @@ full one-hot encoded feature space rather than the specific five
 products that WhiskerInteract tested.
 
 % ===============================================================
-\section{Conclusion}
-\label{sec:conclusion}
+\section{Final Conclusions}
+\label{sec:conclusions}
 % ===============================================================
 
 We have introduced CatNet, a six-module triangulated evidence
@@ -938,10 +938,7 @@ degree-2 PurrPoly but not by FurRBF.  PurrRobust stability checks
 confirm all findings across three random seeds, nine regularisation
 levels, and two MI discretisation schemes.
 
-% ===============================================================
-\section*{Limitations}
-% ===============================================================
-
+\paragraph{Limitations.}
 KittenGauss provides useful descriptive comparisons but is a poor
 model for zero-inflated variables such as \texttt{capital\_gain};
 findings from this module should be interpreted alongside the ClawReg

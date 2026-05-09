@@ -15,6 +15,7 @@ from src.split import apply_split, load_or_create_split
 
 
 def _fit_logistic_feature_groups(train_df: pd.DataFrame, best_c: float) -> list[str]:
+    # Refit the logistic model and pull out the strongest grouped signals.
     X_train = train_df[config.MODEL_BASE_FEATURES]
     y_train = train_df[config.LABEL_COLUMN]
     _, pipeline = evaluate_logistic_model(X_train, y_train, X_train, y_train, c_value=best_c)
@@ -33,6 +34,7 @@ def _fit_logistic_feature_groups(train_df: pd.DataFrame, best_c: float) -> list[
 
 
 def _evaluate_svm_seed(train_df: pd.DataFrame, test_df: pd.DataFrame, family: str, params: dict) -> dict:
+    # Refit one SVM variant on a given split seed and return held-out metrics.
     X_train = train_df[config.MODEL_BASE_FEATURES]
     y_train = train_df[config.LABEL_COLUMN]
     X_test = test_df[config.MODEL_BASE_FEATURES]
@@ -60,6 +62,7 @@ def run_robustness_checks(
     nonlinear_family: str,
     nonlinear_params: dict,
 ) -> tuple[pd.DataFrame, dict[int, list[str]]]:
+    # Repeat the main comparisons across several random splits.
     rows = []
     top_feature_groups: dict[int, list[str]] = {}
 
@@ -86,6 +89,7 @@ def run_robustness_checks(
 
 
 def plot_robustness_ranges(robustness_df: pd.DataFrame, output_path) -> None:
+    # Plot ROC-AUC variation across random seeds for each model family.
     set_plot_style()
     fig, ax = plt.subplots(figsize=(8, 4))
     for model_name, subset in robustness_df.groupby("model"):

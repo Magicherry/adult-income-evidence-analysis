@@ -16,6 +16,7 @@ from src.preprocess import build_preprocessor
 
 
 def _subsample_training_data(X: pd.DataFrame, y: pd.Series) -> tuple[pd.DataFrame, pd.Series]:
+    # Use a smaller stratified subset when SVM tuning would be too expensive.
     if len(X) <= config.SVM_TUNING_SUBSET:
         return X, y
     X_subset, _, y_subset, _ = train_test_split(
@@ -29,6 +30,7 @@ def _subsample_training_data(X: pd.DataFrame, y: pd.Series) -> tuple[pd.DataFram
 
 
 def _evaluate_cv_scores(pipeline: Pipeline, X: pd.DataFrame, y: pd.Series) -> dict:
+    # Score one SVM configuration with the reduced CV metric set.
     splitter = StratifiedKFold(n_splits=config.SVM_CV_FOLDS, shuffle=True, random_state=config.MAIN_SPLIT_SEED)
     scores = cross_validate(
         pipeline,
@@ -47,6 +49,7 @@ def _evaluate_cv_scores(pipeline: Pipeline, X: pd.DataFrame, y: pd.Series) -> di
 
 
 def tune_linear_svm(X_train: pd.DataFrame, y_train: pd.Series) -> tuple[pd.DataFrame, dict]:
+    # Sweep the linear SVM C grid and keep the best setting.
     X_subset, y_subset = _subsample_training_data(X_train, y_train)
     rows = []
     for c_value in config.LINEAR_SVM_C_GRID:
@@ -64,6 +67,7 @@ def tune_linear_svm(X_train: pd.DataFrame, y_train: pd.Series) -> tuple[pd.DataF
 
 
 def tune_kernel_svm(X_train: pd.DataFrame, y_train: pd.Series, family: str) -> tuple[pd.DataFrame, dict]:
+    # Evaluate the preset polynomial or RBF parameter grid.
     X_subset, y_subset = _subsample_training_data(X_train, y_train)
     param_grid = config.POLY_SVM_PARAM_GRID if family == "poly" else config.RBF_SVM_PARAM_GRID
     rows = []
@@ -89,6 +93,7 @@ def _fit_and_evaluate_svm(
     X_test: pd.DataFrame,
     y_test: pd.Series,
 ) -> dict:
+    # Fit one tuned SVM and return its held-out metrics.
     if family == "linear":
         model = LinearSVC(max_iter=10000, random_state=config.MAIN_SPLIT_SEED, **params)
     else:
@@ -107,6 +112,7 @@ def _fit_and_evaluate_svm(
 
 
 def tune_and_evaluate_svm_models(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    # Tune all SVM families, then compare their test-set performance.
     X_train = train_df[config.MODEL_BASE_FEATURES]
     y_train = train_df[config.LABEL_COLUMN]
     X_test = test_df[config.MODEL_BASE_FEATURES]
@@ -141,6 +147,7 @@ def build_final_model_comparison(
     interaction_metrics_df: pd.DataFrame,
     svm_comparison_df: pd.DataFrame,
 ) -> pd.DataFrame:
+    # Combine logistic and SVM results into one final comparison table.
     rows = []
     for _, row in logistic_metrics_df.iterrows():
         rows.append({"model": "logistic_baseline", **row.to_dict()})
@@ -155,6 +162,7 @@ def build_final_model_comparison(
 
 
 def plot_svm_kernel_comparison(comparison_df: pd.DataFrame, output_path) -> None:
+    # Plot held-out ROC-AUC for the tuned SVM families.
     set_plot_style()
     plot_df = comparison_df.sort_values("roc_auc", ascending=True)
     fig, ax = plt.subplots(figsize=(8, 4))

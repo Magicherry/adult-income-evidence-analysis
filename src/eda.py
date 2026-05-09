@@ -10,6 +10,7 @@ LABEL_MAP = {0: "<=50K", 1: ">50K"}
 
 
 def class_balance_table(train_df: pd.DataFrame) -> pd.DataFrame:
+    # Summarize how the two income classes are split in training data.
     counts = train_df[config.LABEL_COLUMN].value_counts().sort_index()
     proportions = train_df[config.LABEL_COLUMN].value_counts(normalize=True).sort_index()
     return pd.DataFrame(
@@ -22,6 +23,7 @@ def class_balance_table(train_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def continuous_feature_summary(train_df: pd.DataFrame) -> pd.DataFrame:
+    # Collect class-conditional summary stats for the numeric features.
     grouped = train_df.groupby(config.LABEL_COLUMN)[config.NUMERIC_RAW_FEATURES]
     summary = grouped.agg(["mean", "std", "median", "min", "max"])
     summary.columns = ["_".join(part for part in column if part) for column in summary.columns]
@@ -31,6 +33,7 @@ def continuous_feature_summary(train_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def categorical_frequency_summary(train_df: pd.DataFrame) -> pd.DataFrame:
+    # Count the main categorical levels and their positive-label rates.
     selected_features = [
         "workclass",
         "occupation",
@@ -57,6 +60,7 @@ def categorical_frequency_summary(train_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def continuous_flag_table(train_df: pd.DataFrame) -> pd.DataFrame:
+    # Flag numeric features that look skewed, zero-heavy, or dominated by one value.
     rows = []
     for feature in config.NUMERIC_RAW_FEATURES:
         series = train_df[feature]
@@ -90,6 +94,7 @@ def continuous_flag_table(train_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_class_balance(class_balance_df: pd.DataFrame, output_path) -> None:
+    # Plot the class counts with proportions written above the bars.
     set_plot_style()
     fig, ax = plt.subplots(figsize=(6, 4))
     bars = ax.bar(class_balance_df["income_class"], class_balance_df["count"], color=["#4c78a8", "#f58518"])
@@ -101,6 +106,7 @@ def plot_class_balance(class_balance_df: pd.DataFrame, output_path) -> None:
 
 
 def plot_continuous_by_income(train_df: pd.DataFrame, output_path) -> None:
+    # Show class-wise histograms for each numeric feature in one grid.
     set_plot_style()
     fig, axes = plt.subplots(3, 2, figsize=config.FIGURE_SIZE_TALL)
     axes = axes.flatten()
@@ -126,6 +132,7 @@ def plot_continuous_by_income(train_df: pd.DataFrame, output_path) -> None:
 
 
 def plot_categorical_frequency_grid(categorical_summary_df: pd.DataFrame, output_path) -> None:
+    # Plot the biggest categories for a small set of high-value categorical features.
     set_plot_style()
     features = [
         "workclass",
@@ -155,4 +162,3 @@ def plot_categorical_frequency_grid(categorical_summary_df: pd.DataFrame, output
         ax.set_title(feature.replace("_", " ").title())
         ax.set_xlabel("Count")
     save_figure(fig, output_path)
-

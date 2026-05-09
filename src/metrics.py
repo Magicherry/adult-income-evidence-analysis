@@ -5,6 +5,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 
 
 def compute_classification_metrics(y_true, y_pred, y_score) -> dict:
+    # Collect the classification metrics used throughout the report.
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "precision": float(precision_score(y_true, y_pred, zero_division=0)),
@@ -15,6 +16,7 @@ def compute_classification_metrics(y_true, y_pred, y_score) -> dict:
 
 
 def score_to_prediction(y_score) -> np.ndarray:
+    # Convert either probabilities or signed margins into hard labels.
     y_score = np.asarray(y_score)
     if ((y_score >= 0.0) & (y_score <= 1.0)).all():
         return (y_score >= 0.5).astype(int)

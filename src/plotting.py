@@ -9,6 +9,7 @@ from src.utils import ensure_directory
 
 
 def set_plot_style() -> None:
+    # Apply one shared matplotlib style so figures stay consistent.
     plt.style.use("seaborn-v0_8-whitegrid")
     plt.rcParams["figure.dpi"] = config.PLOT_DPI
     plt.rcParams["axes.titlesize"] = 12
@@ -19,6 +20,7 @@ def set_plot_style() -> None:
 
 
 def save_figure(fig: plt.Figure, path: Path) -> None:
+    # Save a figure after making sure its output directory exists.
     ensure_directory(path.parent)
     fig.tight_layout()
     fig.savefig(path, bbox_inches="tight", dpi=config.PLOT_DPI)

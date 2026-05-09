@@ -12,6 +12,7 @@ from src import config
 
 
 def collapse_native_country(value: object) -> str:
+    # Reduce native country to the grouping used in the main model.
     if pd.isna(value):
         return "Missing"
     if value == "United-States":
@@ -20,6 +21,7 @@ def collapse_native_country(value: object) -> str:
 
 
 def build_analysis_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    # Create the cleaned analysis table used by both EDA and modeling.
     analysis_df = df.copy()
     analysis_df[config.LABEL_COLUMN] = (
         analysis_df[config.LABEL_SOURCE_COLUMN] == config.POSITIVE_LABEL
@@ -31,6 +33,7 @@ def build_analysis_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             continue
         analysis_df[column] = analysis_df[column].fillna("Missing")
 
+    # Keep the raw column for audit work, but add a grouped version for the main model.
     analysis_df["native_country_grouped"] = analysis_df["native_country"].apply(collapse_native_country)
     analysis_df["native_country"] = analysis_df["native_country"].fillna("Missing")
 
@@ -40,6 +43,7 @@ def build_analysis_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def retained_features_table() -> pd.DataFrame:
+    # Document which raw and derived features are kept for later stages.
     rows = []
     for feature in config.NUMERIC_RAW_FEATURES:
         rows.append(
@@ -97,6 +101,7 @@ def retained_features_table() -> pd.DataFrame:
 
 
 def add_interaction_terms(df: pd.DataFrame, interaction_pairs: Iterable[tuple[str, str]]) -> tuple[pd.DataFrame, list[str]]:
+    # Add simple product terms and return the new column names.
     output_df = df.copy()
     created_columns: list[str] = []
     for feature_a, feature_b in interaction_pairs:
@@ -107,6 +112,7 @@ def add_interaction_terms(df: pd.DataFrame, interaction_pairs: Iterable[tuple[st
 
 
 def build_preprocessor(interaction_columns: Iterable[str] | None = None) -> ColumnTransformer:
+    # Build the shared preprocessing block used by all downstream models.
     interaction_columns = list(interaction_columns or [])
     numeric_features = config.NUMERIC_MODEL_FEATURES + interaction_columns
 
@@ -132,6 +138,7 @@ def build_preprocessor(interaction_columns: Iterable[str] | None = None) -> Colu
 
 
 def feature_group_from_encoded_name(feature_name: str) -> str:
+    # Map encoded feature names back to a readable original feature group.
     if feature_name.startswith("num__"):
         cleaned = feature_name.replace("num__", "", 1)
         if cleaned.startswith("interaction__"):

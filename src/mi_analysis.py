@@ -44,12 +44,14 @@ DOMAIN_PLAUSIBLE_RESERVES = [
 
 @dataclass
 class BinningRule:
+    # Stores the learned discretization rule for one feature.
     feature: str
     kind: str
     edges: list[float]
 
 
 def _quantile_edges(series: pd.Series, bins: int) -> list[float]:
+    # Build stable bin edges from quantiles, even for low-variance features.
     quantiles = np.linspace(0.0, 1.0, bins + 1)
     edges = np.unique(series.quantile(quantiles).to_numpy())
     if len(edges) < 2:
@@ -60,6 +62,7 @@ def _quantile_edges(series: pd.Series, bins: int) -> list[float]:
 
 
 def fit_binning_rules(train_df: pd.DataFrame, spec: dict) -> dict[str, BinningRule]:
+    # Learn the discretization rules used before mutual information scoring.
     rules: dict[str, BinningRule] = {}
     for feature, rule_spec in spec.items():
         if rule_spec["kind"] == "quantile":
@@ -78,6 +81,7 @@ def fit_binning_rules(train_df: pd.DataFrame, spec: dict) -> dict[str, BinningRu
 
 
 def apply_binning_rules(df: pd.DataFrame, rules: dict[str, BinningRule]) -> pd.DataFrame:
+    # Apply the learned binning so MI is computed on discrete inputs.
     discrete = pd.DataFrame(index=df.index)
     for feature in MI_FEATURES:
         if feature in rules:
@@ -90,6 +94,7 @@ def apply_binning_rules(df: pd.DataFrame, rules: dict[str, BinningRule]) -> pd.D
                     duplicates="drop",
                 ).astype(str)
             else:
+                # Keep zeros separate because gain/loss variables are extremely zero-inflated.
                 output = pd.Series(index=df.index, dtype=object)
                 output[df[feature] == 0] = "zero"
                 positive_mask = df[feature] > 0
@@ -109,6 +114,7 @@ def apply_binning_rules(df: pd.DataFrame, rules: dict[str, BinningRule]) -> pd.D
 
 
 def compute_mi_outputs(discrete_df: pd.DataFrame, y: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    # Compute feature-label MI, pairwise MI, and the full MI matrix.
     mi_matrix = pd.DataFrame(index=MI_FEATURES, columns=MI_FEATURES, dtype=float)
     pair_rows = []
     label_rows = []
@@ -141,6 +147,7 @@ def compute_mi_outputs(discrete_df: pd.DataFrame, y: pd.Series) -> tuple[pd.Data
 
 
 def _model_feature_name(feature: str) -> str:
+    # Map audit-time feature names to the names used by the model pipeline.
     if feature == "capital_gain":
         return "capital_gain_log1p"
     if feature == "capital_loss":
@@ -149,6 +156,7 @@ def _model_feature_name(feature: str) -> str:
 
 
 def select_candidate_interactions(pairs_df: pd.DataFrame, label_df: pd.DataFrame) -> pd.DataFrame:
+    # Shortlist interaction candidates from MI ranking plus a few reserved pairs.
     label_lookup = label_df.set_index("feature")["feature_label_mi"].to_dict()
     numeric_pairs = pairs_df[
         pairs_df["feature_a"].isin(NUMERIC_MI_FEATURES) & pairs_df["feature_b"].isin(NUMERIC_MI_FEATURES)
@@ -189,6 +197,7 @@ def select_candidate_interactions(pairs_df: pd.DataFrame, label_df: pd.DataFrame
 
 
 def plot_mi_heatmap(mi_matrix: pd.DataFrame, output_path) -> None:
+    # Render the pairwise MI matrix as a heatmap.
     set_plot_style()
     fig, ax = plt.subplots(figsize=(10, 8))
     image = ax.imshow(mi_matrix.values.astype(float), cmap="viridis")
@@ -202,6 +211,7 @@ def plot_mi_heatmap(mi_matrix: pd.DataFrame, output_path) -> None:
 
 
 def plot_top_pairs(pairs_df: pd.DataFrame, output_path) -> None:
+    # Plot the strongest feature-feature MI pairs.
     set_plot_style()
     top_pairs = pairs_df.head(10).copy()
     top_pairs["pair"] = top_pairs["feature_a"] + " x " + top_pairs["feature_b"]
@@ -214,6 +224,7 @@ def plot_top_pairs(pairs_df: pd.DataFrame, output_path) -> None:
 
 
 def plot_feature_label_ranking(label_df: pd.DataFrame, output_path) -> None:
+    # Plot feature-label MI from lowest to highest.
     set_plot_style()
     plot_df = label_df.sort_values("feature_label_mi", ascending=True)
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -229,6 +240,7 @@ def mi_sensitivity_overlap(
     baseline_candidates: pd.DataFrame,
     sensitivity_candidates: pd.DataFrame,
 ) -> dict:
+    # Check how much the MI rankings change under a coarser binning scheme.
     baseline_top = {tuple(sorted((row["feature_a"], row["feature_b"]))) for _, row in baseline_pairs.head(10).iterrows()}
     sensitivity_top = {
         tuple(sorted((row["feature_a"], row["feature_b"]))) for _, row in sensitivity_pairs.head(10).iterrows()

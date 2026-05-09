@@ -17,6 +17,7 @@ def _classify_interaction(
     nonzero_share: float,
     sign_consistency: float,
 ) -> str:
+    # Bucket each tested interaction into a compact evidence label.
     predictive = delta_cv_auc >= 0.002 and delta_test_auc >= -0.002 and nonzero_share >= 0.5
     unstable = sign_consistency < 0.75 or (0.1 <= nonzero_share < 0.5) or abs(delta_cv_auc) < 0.001
 
@@ -39,6 +40,7 @@ def evaluate_interaction_candidates(
     baseline_cv_auc: float,
     baseline_test_auc: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[tuple[str, str]], float, dict]:
+    # Test shortlisted interaction terms and keep the ones that survive basic checks.
     X_train = train_df[config.MODEL_BASE_FEATURES]
     y_train = train_df[config.LABEL_COLUMN]
     X_test = test_df[config.MODEL_BASE_FEATURES]
@@ -52,6 +54,7 @@ def evaluate_interaction_candidates(
         X_train_aug, interaction_columns = add_interaction_terms(X_train, interaction_pair)
         X_test_aug, _ = add_interaction_terms(X_test, interaction_pair)
 
+        # Reuse the baseline regularization first so each interaction is judged on the same footing.
         cv_summary = cross_validate_logistic(
             X_train_aug,
             y_train,
@@ -126,6 +129,7 @@ def evaluate_interaction_candidates(
     survivor_pairs = [(row["model_feature_a"], row["model_feature_b"]) for _, row in survivors.head(3).iterrows()]
 
     if survivor_pairs:
+        # Only retune once we have a small set of interactions worth combining.
         X_train_combined, interaction_columns = add_interaction_terms(X_train, survivor_pairs)
         X_test_combined, _ = add_interaction_terms(X_test, survivor_pairs)
         combined_cv_summary = cross_validate_logistic(
@@ -163,6 +167,7 @@ def interaction_model_metrics_table(
     combined_metrics: dict,
     survivor_pairs: list[tuple[str, str]],
 ) -> pd.DataFrame:
+    # Put the baseline and interaction-augmented models into one comparison table.
     rows = [{"model": "baseline_main_effects", **baseline_metrics, "interaction_count": 0, "selected_interactions": ""}]
     rows.append(
         {
@@ -176,6 +181,7 @@ def interaction_model_metrics_table(
 
 
 def plot_interaction_delta_auc(tested_df: pd.DataFrame, output_path) -> None:
+    # Plot the cross-validated AUC lift for each candidate interaction.
     set_plot_style()
     plot_df = tested_df.copy()
     plot_df["label"] = plot_df["feature_a"] + " x " + plot_df["feature_b"]

@@ -9,6 +9,7 @@ from src import config
 
 
 def _strip_object_columns(df: pd.DataFrame, columns: Iterable[str]) -> pd.DataFrame:
+    # Trim string columns and turn stringified nulls back into missing values.
     for column in columns:
         if column in df.columns:
             df[column] = df[column].astype(str).str.strip()
@@ -17,10 +18,12 @@ def _strip_object_columns(df: pd.DataFrame, columns: Iterable[str]) -> pd.DataFr
 
 
 def load_raw_data() -> pd.DataFrame:
+    # Read the original Adult dataset from disk.
     return pd.read_csv(config.RAW_DATA_PATH)
 
 
 def load_standardized_data() -> pd.DataFrame:
+    # Standardize column names and clean lightweight formatting issues.
     df = load_raw_data().rename(columns=config.RAW_TO_CLEAN_COLUMN_MAP).copy()
     df.insert(0, config.ROW_ID_COLUMN, range(len(df)))
     object_columns = [column for column in df.columns if df[column].dtype == "object"]
@@ -31,6 +34,7 @@ def load_standardized_data() -> pd.DataFrame:
 
 
 def build_data_dictionary(df: pd.DataFrame) -> pd.DataFrame:
+    # Summarize each column for the audit section of the analysis.
     rows = []
     for column in df.columns:
         series = df[column]

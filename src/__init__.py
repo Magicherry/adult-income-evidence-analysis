@@ -1,1 +1,1 @@
-"""Adult Income analysis package."""
+# Adult Income analysis package.
