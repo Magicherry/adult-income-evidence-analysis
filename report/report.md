@@ -2,11 +2,11 @@
 
 # Abstract
 
-This project examines the UCI Adult / Census Income dataset as a data analysis problem, not just a prediction benchmark. The main questions are which variables separate the two income groups, how the features relate to one another, which signals remain after sparsity is enforced, and whether the classification boundary is mostly linear or meaningfully nonlinear. To answer these questions, the workflow combines focused exploratory analysis, class-conditional Gaussian summaries for continuous variables, mutual information (MI), L1-regularized logistic regression, a small interaction test, SVM kernel comparisons, and lightweight robustness checks. The clearest continuous separators are `education_num`, `age`, and `hours_per_week`. By contrast, `capital_gain` and `capital_loss` are strongly non-Gaussian and look weak under a Gaussian summary. MI highlights strong dependencies such as `marital_status`-`relationship` and `workclass`-`occupation`, but the shortlisted numeric interactions do not improve prediction in a meaningful way. The sparse logistic model reaches a held-out ROC-AUC of `0.897` and consistently keeps `marital_status`, `education_num`, `capital_gain_log1p`, `hours_per_week`, and `age`. Among the SVMs, a degree-2 polynomial kernel performs best with ROC-AUC `0.905`, while linear and RBF kernels are essentially tied at `0.897` and `0.896`. Overall, the results suggest that most of the structure in this problem is already captured by a relatively simple model, with some limited low-order nonlinearity and clear redundancy among several dependent features.
+This project examines the UCI Adult / Census Income dataset as a data analysis problem, not just a prediction benchmark. The main questions are which variables separate the two income groups, how the features relate to one another, which signals remain after sparsity is enforced, and whether the classification boundary is mostly linear or meaningfully nonlinear. The workflow combines focused exploratory analysis, class-conditional Gaussian summaries for continuous variables, mutual information (MI), L1-regularized logistic regression, a small interaction test, SVM kernel comparisons, and lightweight robustness checks. The clearest continuous separators are `education_num`, `age`, and `hours_per_week`. `capital_gain` and `capital_loss` are strongly non-Gaussian and look weak under a Gaussian summary. MI highlights strong dependencies such as `marital_status`-`relationship` and `workclass`-`occupation`, but the shortlisted numeric interactions do not improve prediction in a meaningful way. The sparse logistic model reaches a held-out ROC-AUC of `0.897` and consistently keeps `marital_status`, `education_num`, `capital_gain_log1p`, `hours_per_week`, and `age`. Among the SVMs, a degree-2 polynomial kernel performs best with ROC-AUC `0.905`, while linear and RBF kernels are essentially tied at `0.897` and `0.896`. Overall, the results suggest that most of the structure in this problem is already captured by a relatively simple model, with some limited low-order nonlinearity and clear redundancy among several dependent features.
 
 # 1. Introduction
 
-The Adult income dataset is a good fit for our course project because it combines continuous and categorical variables, has visible class imbalance, and supports several different kinds of analysis. Rather than asking only which classifier gives the best score, this project focuses on the structure of the data itself and on whether different methods tell a consistent story.
+The Adult income dataset is a good fit for this course project because it combines continuous and categorical variables, has visible class imbalance, and supports several kinds of analysis. The goal is to study how the main parts of the data work together: class-conditional distributions, feature dependencies, sparse predictive signals, and the shape of the classification boundary.
 
 The analysis is organized around four research questions:
 
@@ -15,7 +15,7 @@ The analysis is organized around four research questions:
 3. Which features carry genuine predictive signal, and which appear weak, redundant, or noisy?
 4. Is the income decision boundary mainly linear, or does it show meaningful nonlinear structure?
 
-A feature can look useful on its own and still become redundant in a multivariate model. A strong dependency between two features may reflect overlap rather than a useful interaction. For that reason, the project uses several complementary methods and treats the final interpretation as a synthesis of evidence rather than a conclusion drawn from one model alone.
+A feature can look useful on its own and still become redundant in a multivariate model. A strong dependency between two features can also reflect overlap, not a useful interaction. The project therefore combines several complementary methods and checks whether their results support the same overall interpretation.
 
 # 2. Dataset and Preprocessing
 
@@ -35,7 +35,7 @@ For modeling, `capital_gain` and `capital_loss` are also represented through `lo
 
 The main split is a stratified 80/20 train/test split with seed `42`. The robustness checks reuse seeds `7`, `42`, and `99`. All model tuning is restricted to the training split.
 
-One preprocessing detail needs to be stated clearly. `missing_value_summary.csv` reports zero missing values, but the saved categorical summaries still show `?` as an explicit category in fields such as `workclass` and `occupation`. This report therefore describes the saved outputs as they actually appear, rather than assuming the intended missing-value handling was applied everywhere in the pipeline.
+One preprocessing detail needs to be stated clearly. `missing_value_summary.csv` reports zero missing values, but the saved categorical summaries still show `?` as an explicit category in fields such as `workclass` and `occupation`. This report describes the saved outputs as they actually appear and does not assume the intended missing-value handling was applied everywhere in the pipeline.
 
 The handling of `native_country` is more straightforward. In the full dataset, roughly `89.7%` of rows fall under `United-States`, and the grouped feature has label MI of only `0.0006` (`native_country_relevance.csv`, `feature_label_mi.csv`). Relative to the main demographic and work-related variables, it contributes little signal.
 
@@ -150,7 +150,7 @@ The discretization sensitivity check is very stable (`mi_sensitivity_summary.csv
 
 ![Figure 6. Pairwise mutual information heatmap.](../outputs/figures/mi_heatmap.png)
 
-*Figure 6. MI heatmap across the retained analysis features. The strongest dependencies are concentrated in household-structure and work-context variables rather than in the numeric interaction shortlist.*
+*Figure 6. MI heatmap across the retained analysis features. The strongest dependencies are concentrated in household-structure and work-context variables, not in the numeric interaction shortlist.*
 
 ![Figure 7. Top feature-feature MI pairs.](../outputs/figures/top_mi_pairs.png)
 
@@ -185,7 +185,7 @@ Several other groups remain useful, but less consistently:
 - `relationship`, `workclass`, `gender`: each nonzero in `77.8%`
 - `native_country_grouped`, `race`: each nonzero in `66.7%`
 
-The strongest signal is fairly concentrated rather than spread evenly across the full feature set. `marital_status`, `education_num`, `age`, work intensity, and the capital-related variables form the main core.
+The strongest signal is concentrated in a small feature core. `marital_status`, `education_num`, `age`, work intensity, and the capital-related variables contribute most of it.
 
 Some variables that looked weak under the Gaussian summary still matter in the multivariate model after transformation. `capital_gain_log1p` and `capital_loss_log1p` survive the full regularization path even though the raw variables were poor Gaussian fits.
 
@@ -209,7 +209,7 @@ The interaction stage asks whether a small set of targeted numeric interactions 
 
 The key point is that every change is tiny. The largest positive change in cross-validated ROC-AUC is only `+0.000174`, and the largest positive change on the test set is only `+0.000210`. Those gains are too small to support any claim of a meaningful improvement.
 
-No interaction survives strongly enough to justify a final augmented model, which is why `interaction_model_metrics.csv` reports `NaN` for the `interaction_augmented` row instead of a retained fitted model.
+No interaction survives strongly enough to justify a final augmented model, so `interaction_model_metrics.csv` reports `NaN` for the `interaction_augmented` row and no retained fitted model.
 
 So the conclusion here is that the MI screen produced plausible candidates, but within this limited and reasonable test set, none of the explicit numeric interactions added robust predictive value beyond the main effects.
 
@@ -231,7 +231,7 @@ The SVM comparison provides the clearest evidence about boundary shape (`svm_tun
 - The RBF kernel does not improve on the linear baseline; its test ROC-AUC is slightly lower at `0.896`.
 - Within the polynomial family, degree `2` works best. The saved degree-3 settings are clearly worse in cross-validation (`0.883` and `0.883`) than the best degree-2 result (`0.898`).
 
-This points to limited low-order nonlinearity rather than broad nonlinear complexity. A purely linear boundary is not the full story, but neither is there evidence that a highly flexible kernel is necessary.
+This points to limited low-order nonlinearity, not broad nonlinear complexity. A purely linear boundary is not the full story, but the results do not support a highly flexible kernel either.
 
 This interpretation also fits the earlier interaction results. The polynomial kernel may be capturing a wider range of low-order effects across the encoded feature space, including squared terms and interactions that were not covered by the five explicit numeric products tested earlier.
 
@@ -285,7 +285,7 @@ That strengthens the main boundary-shape conclusion. At the same time, the saved
 
 # 5. Discussion
 
-Taken together, the methods point to a fairly consistent picture. `education_num`, `age`, `hours_per_week`, and the household-structure variables carry the clearest signal across the descriptive summaries, MI rankings, and sparse logistic model. The capital variables are a useful contrast: they look weak under the Gaussian summary because of zero inflation and skew, but their transformed versions remain active across the full regularization path. Strong MI pairs such as `marital_status`-`relationship` and `workclass`-`occupation` mostly look like overlap or shared context rather than missing interaction terms, since the tested numeric interactions add almost no lift. The SVM results also fit this picture. Linear models already perform well, but the degree-2 polynomial kernel improves consistently over both the linear and RBF alternatives, which points to modest low-order nonlinearity rather than strong general nonlinear complexity.
+Taken together, the methods point to a fairly consistent picture. `education_num`, `age`, `hours_per_week`, and the household-structure variables carry the clearest signal across the descriptive summaries, MI rankings, and sparse logistic model. The capital variables are a useful contrast: they look weak under the Gaussian summary because of zero inflation and skew, but their transformed versions remain active across the full regularization path. Strong MI pairs such as `marital_status`-`relationship` and `workclass`-`occupation` mostly look like overlap or shared context, since the tested numeric interactions add almost no lift. The SVM results also fit this picture. Linear models already perform well, but the degree-2 polynomial kernel improves consistently over both the linear and RBF alternatives, which points to modest low-order nonlinearity, not strong general nonlinear complexity.
 
 # 6. Final Answers to the Research Questions
 
@@ -303,16 +303,16 @@ The strongest robust signals are `marital_status`, `education_num`, `capital_gai
 
 ## 4. Is the income decision boundary mainly linear, or does it show meaningful nonlinear structure?
 
-The boundary is not purely linear, but it is also not strongly nonlinear in a broad sense. Linear models already perform well, with test ROC-AUC around `0.897`. A degree-2 polynomial SVM improves this to `0.905`, while the RBF kernel does not beat the linear baseline. The most defensible conclusion is that the problem contains modest low-order nonlinear structure rather than strong high-complexity nonlinearity.
+The boundary is not purely linear, but it is also not strongly nonlinear in a broad sense. Linear models already perform well, with test ROC-AUC around `0.897`. A degree-2 polynomial SVM improves this to `0.905`, while the RBF kernel does not beat the linear baseline. The most defensible conclusion is that the problem contains modest low-order nonlinear structure, not strong high-complexity nonlinearity.
 
 # 7. Limitations
 
 - The Gaussian analysis is only a descriptive lens. It is useful for comparison, but it is a poor fit for zero-inflated variables such as `capital_gain` and `capital_loss`.
-- The saved missing-value artifacts are inconsistent. The preprocessing specification describes `?` handling, but the realized categorical summaries still show `?` as explicit categories.
+- The saved missing-value artifacts are inconsistent. The preprocessing specification describes unknown-value handling, but the realized categorical summaries still show the unknown-value marker as an explicit category.
 - The interaction stage is deliberately narrow. It tests five numeric interactions, not the full space of possible mixed or categorical interactions.
 - The SVM comparison is informative about boundary shape, but it does not identify which exact nonlinear terms matter.
 - All conclusions are specific to the Adult dataset and should not be generalized beyond this setting without further evidence.
 
 # 8. Conclusion
 
-The Adult income dataset shows clear differences between the two income classes, but only part of that structure remains central in sparse multivariate models. `education_num`, `age`, work intensity, capital-related variables, and household-structure features make up the strongest signal core. MI reveals substantial dependency structure, yet those dependencies rarely translate into useful explicit interaction terms. Linear models already explain much of the problem, while a degree-2 polynomial SVM performs consistently better, pointing to limited low-order nonlinearity rather than broad nonlinear complexity. The robustness checks support the same overall picture.
+The Adult income dataset shows clear differences between the two income classes, but only part of that structure remains central in sparse multivariate models. `education_num`, `age`, work intensity, capital-related variables, and household-structure features make up the strongest signal core. MI reveals substantial dependency structure, yet those dependencies rarely translate into useful explicit interaction terms. Linear models already explain much of the problem, while a degree-2 polynomial SVM performs consistently better, pointing to limited low-order nonlinearity, not broad nonlinear complexity. The robustness checks support the same overall picture.
